@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { footBottom } from '../game/collision'
 import {
   BLACKOUT_HOLD_MS,
   FLASHLIGHT_RADIUS,
@@ -10,16 +11,22 @@ import {
 } from '../game/constants'
 import { startGameLoop } from '../game/loop'
 import {
+  activeInteractables,
   createFlags,
   effectiveDark,
   withLeverPulled,
+  withVaseSmashed,
+  withWallWiped,
+  withWrench,
   type MatchFlags,
 } from '../game/matchFlags'
 import type { Interactable, LoopControls, MatchPhase } from '../game/types'
 import {
   createLeverProp,
   createPlaceholderCrate,
+  createVaseProp,
   createWorldSolids,
+  createWrenchProp,
 } from '../game/world'
 import GateSlamOverlay from './GateSlamOverlay'
 import LobbyOverlay from './LobbyOverlay'
@@ -27,10 +34,15 @@ import PartnerSim from './PartnerSim'
 import PowerHud from './PowerHud'
 import TaskModal from './TaskModal'
 import LeverTask from './tasks/LeverTask'
+import VaseTask from './tasks/VaseTask'
+import WrenchTask from './tasks/WrenchTask'
 
 const crate = createPlaceholderCrate()
 const lever = createLeverProp()
-const solids = createWorldSolids([crate, lever])
+const wrench = createWrenchProp()
+const vase = createVaseProp()
+const solids = createWorldSolids([crate, lever, wrench, vase])
+const interactProps = { lever, wrench, vase }
 
 export default function WorldView() {
   const [phase, setPhase] = useState<MatchPhase>('lobby')
@@ -48,11 +60,15 @@ export default function WorldView() {
     inputLocked: false,
     darkMode: false,
   })
-  const interactablesRef = useRef<readonly Interactable[]>([lever])
+  const interactablesRef = useRef<readonly Interactable[]>(
+    activeInteractables(createFlags(), interactProps),
+  )
   const phaseRef = useRef(phase)
   const openTaskRef = useRef(openTaskId)
   const flagsRef = useRef(flags)
   const lockdownStartedRef = useRef(false)
+  const sawGridToast = useRef(false)
+  const sawCodeToast = useRef(false)
 
   phaseRef.current = phase
   openTaskRef.current = openTaskId
@@ -61,11 +77,10 @@ export default function WorldView() {
   const lockdownStarted =
     phase === 'blackout' || phase === 'play' || lockdownStartedRef.current
 
-  // Keep mutable controls + interact list in sync for the rAF loop
   controlsRef.current.phase = phase
   controlsRef.current.inputLocked = openTaskId !== null
   controlsRef.current.darkMode = effectiveDark(flags, lockdownStarted)
-  interactablesRef.current = flags.leverA ? [] : [lever]
+  interactablesRef.current = activeInteractables(flags, interactProps)
 
   const syncDarkToDom = useCallback((nextFlags: MatchFlags, lockedDown: boolean) => {
     const dark = effectiveDark(nextFlags, lockedDown)
@@ -76,7 +91,10 @@ export default function WorldView() {
   const requestTask = useCallback((taskId: string) => {
     if (phaseRef.current !== 'play') return
     if (openTaskRef.current !== null) return
-    if (taskId === 'lever' && flagsRef.current.leverA) return
+    const f = flagsRef.current
+    if (taskId === 'lever' && f.leverA) return
+    if (taskId === 'wrench' && f.hasWrench) return
+    if (taskId === 'vase' && f.vaseSmashed) return
     setOpenTaskId(taskId)
   }, [])
 
@@ -100,11 +118,20 @@ export default function WorldView() {
   )
 
   useEffect(() => {
-    if (!flags.lightsOn) return
+    if (!flags.lightsOn || sawGridToast.current) return
+    sawGridToast.current = true
     setAiToast("Grid online. Don't waste it.")
     const id = window.setTimeout(() => setAiToast(null), 2000)
     return () => window.clearTimeout(id)
   }, [flags.lightsOn])
+
+  useEffect(() => {
+    if (!flags.codeKnown || sawCodeToast.current) return
+    sawCodeToast.current = true
+    setAiToast('Remember that. The other pod will need it.')
+    const id = window.setTimeout(() => setAiToast(null), 2500)
+    return () => window.clearTimeout(id)
+  }, [flags.codeKnown])
 
   const completeLocalLever = useCallback(() => {
     applyFlags((prev) => withLeverPulled(prev, 'a'))
@@ -113,6 +140,19 @@ export default function WorldView() {
 
   const completePartnerLever = useCallback(() => {
     applyFlags((prev) => withLeverPulled(prev, 'b'))
+  }, [applyFlags])
+
+  const completePartnerWipe = useCallback(() => {
+    applyFlags((prev) => withWallWiped(prev))
+  }, [applyFlags])
+
+  const completeWrench = useCallback(() => {
+    applyFlags((prev) => withWrench(prev))
+    setOpenTaskId(null)
+  }, [applyFlags])
+
+  const completeVaseSmash = useCallback(() => {
+    applyFlags((prev) => withVaseSmashed(prev))
   }, [applyFlags])
 
   const toggleDebugDark = useCallback(() => {
@@ -225,6 +265,7 @@ export default function WorldView() {
               transform: `translate(${crate.sprite.x}px, ${crate.sprite.y}px)`,
               backgroundColor: crate.color,
               boxShadow: 'inset 0 0 0 2px #1a1208',
+              zIndex: Math.floor(footBottom(crate.foot)),
             }}
             aria-hidden
           />
@@ -240,8 +281,40 @@ export default function WorldView() {
               boxShadow: 'inset 0 0 0 2px #3a1808',
               borderRadius: 4,
               opacity: flags.leverA ? 0.45 : 1,
+              zIndex: Math.floor(footBottom(lever.foot)),
             }}
             aria-label="Lever"
+          />
+
+          <div
+            className="absolute left-0 top-0 will-change-transform"
+            style={{
+              width: wrench.sprite.w,
+              height: wrench.sprite.h,
+              transform: `translate(${wrench.sprite.x}px, ${wrench.sprite.y}px)`,
+              backgroundColor: wrench.color,
+              boxShadow: 'inset 0 0 0 2px #2a3038',
+              borderRadius: 4,
+              opacity: flags.hasWrench ? 0 : 1,
+              zIndex: Math.floor(footBottom(wrench.foot)),
+            }}
+            aria-label="Wrench"
+            aria-hidden={flags.hasWrench}
+          />
+
+          <div
+            className="absolute left-0 top-0 will-change-transform"
+            style={{
+              width: vase.sprite.w,
+              height: vase.sprite.h,
+              transform: `translate(${vase.sprite.x}px, ${vase.sprite.y}px)`,
+              backgroundColor: flags.vaseSmashed ? '#3a2848' : vase.color,
+              boxShadow: 'inset 0 0 0 2px #2a1838',
+              borderRadius: 6,
+              opacity: flags.vaseSmashed ? 0.5 : 1,
+              zIndex: Math.floor(footBottom(vase.foot)),
+            }}
+            aria-label="Vase"
           />
 
           <div
@@ -282,9 +355,26 @@ export default function WorldView() {
               <LeverTask onComplete={completeLocalLever} />
             </TaskModal>
           )}
-          {openTaskId !== null && openTaskId !== 'lever' && (
-            <TaskModal title="Task" onClose={closeTask} />
+          {openTaskId === 'wrench' && (
+            <TaskModal title="Wrench" onClose={closeTask}>
+              <WrenchTask onComplete={completeWrench} />
+            </TaskModal>
           )}
+          {openTaskId === 'vase' && (
+            <TaskModal title="Vase" onClose={closeTask}>
+              <VaseTask
+                alreadySmashed={flags.vaseSmashed}
+                canSmash={flags.hasWrench && flags.wallWiped}
+                onSmash={completeVaseSmash}
+              />
+            </TaskModal>
+          )}
+          {openTaskId !== null &&
+            openTaskId !== 'lever' &&
+            openTaskId !== 'wrench' &&
+            openTaskId !== 'vase' && (
+              <TaskModal title="Task" onClose={closeTask} />
+            )}
         </div>
       </div>
 
@@ -292,6 +382,9 @@ export default function WorldView() {
         enabled={phase === 'play'}
         partnerLeverDone={flags.leverB}
         onPartnerLever={completePartnerLever}
+        gridOn={flags.lightsOn}
+        wallWiped={flags.wallWiped}
+        onPartnerWipe={completePartnerWipe}
       />
     </div>
   )

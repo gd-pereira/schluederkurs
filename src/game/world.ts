@@ -56,6 +56,52 @@ export function createLeverProp(): Interactable {
   }
 }
 
+/** Floor wrench pickup — south of spawn */
+export function createWrenchProp(): Interactable {
+  const footW = 28
+  const footH = 20
+  const spriteW = 40
+  const spriteH = 36
+  const footX = 560
+  const footY = 520
+
+  return {
+    id: 'wrench',
+    taskId: 'wrench',
+    foot: { x: footX, y: footY, w: footW, h: footH },
+    sprite: {
+      x: footX + (footW - spriteW) / 2,
+      y: footY + footH - spriteH,
+      w: spriteW,
+      h: spriteH,
+    },
+    color: '#7a8a9a',
+  }
+}
+
+/** Vase on pedestal — upper mid-left */
+export function createVaseProp(): Interactable {
+  const footW = 44
+  const footH = 32
+  const spriteW = 56
+  const spriteH = 110
+  const footX = 220
+  const footY = 280
+
+  return {
+    id: 'vase',
+    taskId: 'vase',
+    foot: { x: footX, y: footY, w: footW, h: footH },
+    sprite: {
+      x: footX + (footW - spriteW) / 2,
+      y: footY + footH - spriteH,
+      w: spriteW,
+      h: spriteH,
+    },
+    color: '#6b3d8f',
+  }
+}
+
 export function createWorldSolids(props: readonly Prop[]): AABB[] {
   return [...createWalls(), ...props.map((p) => p.foot)]
 }
