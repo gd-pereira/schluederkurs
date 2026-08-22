@@ -3,6 +3,7 @@
  * Never full-plate swap or big rectangular patches.
  *
  * Overlay filenames: item_wrench, item_rag, vase_intact, vase_shards
+ * Collision: pod_a_collision / pod_b_collision (opaque = solid)
  * Modal art still uses modal_* names.
  */
 
@@ -14,6 +15,15 @@ export function assetUrl(skillName: string): string {
 
 export function roomPlateUrl(pod: 'a' | 'b'): string {
   return assetUrl(pod === 'a' ? 'pod_a' : 'pod_b')
+}
+
+/**
+ * Painted collision mask (1280×720 or any size).
+ * Opaque / bright = solid, transparent / dark = walkable.
+ * Filenames: pod_a_collision.png, pod_b_collision.png
+ */
+export function collisionMaskUrl(pod: 'a' | 'b'): string {
+  return assetUrl(pod === 'a' ? 'pod_a_collision' : 'pod_b_collision')
 }
 
 /** Changeable world overlays (transparent PNGs) */

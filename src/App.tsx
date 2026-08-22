@@ -1,18 +1,29 @@
+import { WORLD_H, WORLD_W } from './game/constants'
+import { useFitScale } from './hooks/useFitScale'
 import WorldView from './components/WorldView'
 
 export default function App() {
+  const scale = useFitScale(WORLD_W, WORLD_H, 20)
+
   return (
-    <main className="flex min-h-svh flex-col items-center justify-center gap-4 overflow-x-hidden bg-neutral-950 px-4 py-6 text-neutral-100">
-      <header className="shrink-0 text-center">
-        <h1 className="text-xl font-semibold tracking-tight">Incompetent Chambers</h1>
-        <p className="mt-1 text-sm text-neutral-400">
-          Lobby: Solo Pod A/B · Create / Join · WASD · E · P place (shows feet) · L
-          dark
-        </p>
-      </header>
-      {/* No overflow-auto: focus inside task modals must not scroll the game frame */}
-      <div className="max-w-full shrink-0">
-        <WorldView />
+    <main className="game-stage relative flex h-svh w-full items-center justify-center overflow-hidden text-neutral-100">
+      <div
+        className="relative shrink-0"
+        style={{
+          width: WORLD_W * scale,
+          height: WORLD_H * scale,
+        }}
+      >
+        <div
+          className="origin-top-left"
+          style={{
+            width: WORLD_W,
+            height: WORLD_H,
+            transform: `scale(${scale})`,
+          }}
+        >
+          <WorldView />
+        </div>
       </div>
     </main>
   )

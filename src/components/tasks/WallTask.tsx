@@ -1,12 +1,38 @@
 import { modalAssetUrl } from '../../game/assets'
+import { CODE_CLUE_EVENS } from '../../game/matchFlags'
 import OptionalAssetImg from '../OptionalAssetImg'
 
 type WallTaskProps = {
   hasRag: boolean
+  wallWiped: boolean
   onComplete: () => void
 }
 
-export default function WallTask({ hasRag, onComplete }: WallTaskProps) {
+export default function WallTask({
+  hasRag,
+  wallWiped,
+  onComplete,
+}: WallTaskProps) {
+  if (wallWiped) {
+    return (
+      <div>
+        <OptionalAssetImg
+          src={modalAssetUrl('wall')}
+          alt=""
+          className="mb-4 mx-auto max-h-40 w-auto object-contain"
+        />
+        <p className="text-sm leading-relaxed text-neutral-700">
+          Under the grime: even slots only. Odds live somewhere you can&apos;t
+          see.
+        </p>
+        <p className="mt-4 font-mono text-3xl font-bold tracking-[0.2em] text-neutral-900">
+          {CODE_CLUE_EVENS}
+        </p>
+        <p className="mt-3 text-xs text-neutral-500">Esc to close — tell your partner</p>
+      </div>
+    )
+  }
+
   return (
     <div>
       <OptionalAssetImg
@@ -16,7 +42,7 @@ export default function WallTask({ hasRag, onComplete }: WallTaskProps) {
       />
       <p className="text-sm leading-relaxed text-neutral-700">
         {hasRag
-          ? 'Grime spells out a threat: SMASH THE VASE. Wipe it clean so the other pod can read it… or just trust the facility.'
+          ? 'Grime hides a partial sequence. Wipe it — you won’t get the whole code here.'
           : 'The wall is caked in grime. You need a rag before you can wipe anything.'}
       </p>
       <button

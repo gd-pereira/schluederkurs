@@ -5,7 +5,7 @@ import {
   postHighscore,
   type HighscoreEntry,
 } from '../game/highscores'
-import { HINTS } from '../game/hints'
+import { hintFor } from '../game/hints'
 
 type EscapeOverlayProps = {
   timeMs: number
@@ -46,7 +46,7 @@ export default function EscapeOverlay({
         You escaped
       </h2>
       <p className="mt-3 max-w-md text-center text-sm text-amber-200/90">
-        {HINTS.escaped}
+        {hintFor('a', 'escaped')}
       </p>
       <p className="mt-2 max-w-md text-center text-sm text-neutral-400">
         Congrats. The facility expected incompetence and got… marginally less of

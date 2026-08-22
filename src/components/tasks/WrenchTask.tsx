@@ -6,7 +6,7 @@ export default function WrenchTask({ onComplete }: WrenchTaskProps) {
   return (
     <div>
       <p className="text-sm leading-relaxed text-neutral-700">
-        A heavy wrench. Probably for smashing things you are not supposed to smash.
+        Heavy wrench. Built for bolts — or anything sealed that shouldn’t be.
       </p>
       <button
         type="button"

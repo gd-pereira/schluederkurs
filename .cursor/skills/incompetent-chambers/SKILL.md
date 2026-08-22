@@ -25,7 +25,9 @@ description: >-
 
 ## 2.5D rules
 
-- Tall PNG / placeholder, **tiny foot AABB** for collision
+- Tall PNG / placeholder, **tiny foot AABB** for collision / interact
+- **World blocking:** painted collision mask PNGs (`pod_a_collision`, `pod_b_collision`) — not per-prop AABBs
+- In-game: **C** paint mask · **↑↓** brush · **Q** download · drop into `public/assets/` as `pod_a_collision` / `pod_b_collision`
 - Y-sort by foot bottom (`z-index = floor(foot.y + foot.h)`)
 - Shadows in-engine, not baked into assets
 - Interact radius ~80px around footprint; key **E**

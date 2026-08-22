@@ -6,6 +6,8 @@ type BypassTaskProps = {
   syncProgress: number
   onHoldChange: (held: boolean) => void
   solo: boolean
+  /** Pod A sees the sync bar; Pod B only hears tone cues */
+  showSyncBar: boolean
 }
 
 export default function BypassTask({
@@ -14,6 +16,7 @@ export default function BypassTask({
   syncProgress,
   onHoldChange,
   solo,
+  showSyncBar,
 }: BypassTaskProps) {
   const both = localHeld && partnerHeld
   const pct = Math.min(100, Math.round(syncProgress * 100))
@@ -21,8 +24,7 @@ export default function BypassTask({
   return (
     <div>
       <p className="text-sm leading-relaxed text-neutral-700">
-        Hold bypass with your partner for {GATE_SYNC_MS / 1000}s. Let go and the
-        window resets. Facility loves drama.
+        Dual bypass. Both pods must hold — let go and the window resets.
       </p>
 
       <div className="mt-4 space-y-2 text-xs text-neutral-600">
@@ -40,17 +42,33 @@ export default function BypassTask({
         </p>
       </div>
 
-      <div className="mt-3 h-3 overflow-hidden rounded bg-neutral-300">
-        <div
-          className={`h-full transition-[width] duration-75 ${
-            both ? 'bg-emerald-500' : 'bg-neutral-400'
-          }`}
-          style={{ width: `${both ? pct : 0}%` }}
-        />
-      </div>
-      <p className="mt-1 text-center text-xs text-neutral-500">
-        {both ? `${pct}% synced` : 'Waiting for both holds…'}
-      </p>
+      {showSyncBar ? (
+        <>
+          <div className="mt-3 h-3 overflow-hidden rounded bg-neutral-300">
+            <div
+              className={`h-full transition-[width] duration-75 ${
+                both ? 'bg-emerald-500' : 'bg-neutral-400'
+              }`}
+              style={{ width: `${both ? pct : 0}%` }}
+            />
+          </div>
+          <p className="mt-1 text-center text-xs text-neutral-500">
+            {both ? `${pct}% synced` : 'Waiting for both holds…'}
+          </p>
+        </>
+      ) : (
+        <p className="mt-3 text-center text-sm text-neutral-600">
+          {both
+            ? pct < 40
+              ? 'Tone rising…'
+              : pct < 80
+                ? 'Tone climbing — hold!'
+                : 'Almost — don’t let go!'
+            : localHeld
+              ? 'Waiting on partner…'
+              : 'Hold when your partner is ready.'}
+        </p>
+      )}
 
       <button
         type="button"
@@ -69,7 +87,7 @@ export default function BypassTask({
       <p className="mt-2 text-center text-xs text-neutral-500">
         {solo
           ? 'Press and hold — use Partner sim for the other side'
-          : 'Press and hold — your partner must hold their console too'}
+          : `Hold ~${GATE_SYNC_MS / 1000}s together — talk it out`}
       </p>
     </div>
   )

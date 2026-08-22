@@ -11,7 +11,13 @@ import {
   PLAYER_WALK_FPS,
 } from './constants'
 import { PLAYER_WALK_FRAMES } from './assets'
-import { footBottom, resolveMove } from './collision'
+import { footBottom } from './collision'
+import {
+  findClearFootSpawn,
+  footBlocked,
+  resolveMoveMask,
+  type CollisionMask,
+} from './collisionMask'
 import { findNearestInteractable } from './interact'
 import type { AABB, Interactable, LoopControls } from './types'
 
@@ -35,8 +41,8 @@ export type LoopHandles = {
 
 export type LoopOptions = {
   handles: LoopHandles
-  /** Mutable solids — swap when pod world changes */
-  solidsRef: { current: readonly AABB[] }
+  /** Painted / border collision mask — mutate in place while painting */
+  maskRef: { current: CollisionMask }
   interactablesRef: { current: readonly Interactable[] }
   onToggleDebugDark?: () => void
   onPose?: (x: number, y: number) => void
@@ -58,7 +64,7 @@ function spriteTopLeftFromFoot(foot: AABB): { x: number; y: number } {
 export function startGameLoop(options: LoopOptions): GameLoop {
   const {
     handles,
-    solidsRef,
+    maskRef,
     interactablesRef,
     controls,
     onRequestTask,
@@ -81,6 +87,18 @@ export function startGameLoop(options: LoopOptions): GameLoop {
     w: PLAYER_FOOT_W,
     h: PLAYER_FOOT_H,
   }
+
+  /** Reseat when preferred spawn sits on solids (mask load / paint). */
+  function seatOnClearGround() {
+    const mask = maskRef.current
+    if (!footBlocked(mask, foot)) return
+    const clear = findClearFootSpawn(mask)
+    foot.x = clear.x
+    foot.y = clear.y
+  }
+
+  seatOnClearGround()
+  let seatedMask: CollisionMask | null = maskRef.current
 
   function writePlayerDom(bobY = 0) {
     const pos = spriteTopLeftFromFoot(foot)
@@ -169,6 +187,11 @@ export function startGameLoop(options: LoopOptions): GameLoop {
     const dt = Math.min((now - lastTime) / 1000, 0.05)
     lastTime = now
 
+    if (maskRef.current !== seatedMask) {
+      seatedMask = maskRef.current
+      seatOnClearGround()
+    }
+
     const canMove = controls.phase === 'play' && !controls.inputLocked
 
     let moving = false
@@ -188,7 +211,7 @@ export function startGameLoop(options: LoopOptions): GameLoop {
         const len = Math.hypot(mx, my)
         const dx = (mx / len) * MOVE_SPEED * dt
         const dy = (my / len) * MOVE_SPEED * dt
-        const next = resolveMove(foot, dx, dy, solidsRef.current)
+        const next = resolveMoveMask(foot, dx, dy, maskRef.current)
         foot.x = next.x
         foot.y = next.y
       }

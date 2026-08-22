@@ -6,7 +6,8 @@ export default function RagTask({ onComplete }: RagTaskProps) {
   return (
     <div>
       <p className="text-sm leading-relaxed text-neutral-700">
-        A greasy rag sits on the cart. Good enough to wipe that wall.
+        A greasy rag on the cart. Useful for wiping something you’d rather not
+        touch barehanded.
       </p>
       <button
         type="button"

@@ -5,6 +5,7 @@ import {
   useState,
   type CSSProperties,
 } from 'react'
+import { createPortal } from 'react-dom'
 import {
   BLACKOUT_HOLD_MS,
   FLASHLIGHT_RADIUS,
@@ -18,8 +19,13 @@ import {
   WORLD_H,
   WORLD_W,
 } from '../game/constants'
-import { playerAssetUrl, PLAYER_WALK_FRAMES } from '../game/assets'
-import { HINT_DURATION_MS, hintText } from '../game/hints'
+import { playerAssetUrl, PLAYER_WALK_FRAMES, collisionMaskUrl } from '../game/assets'
+import {
+  createBorderMask,
+  loadCollisionMask,
+  type CollisionMask,
+} from '../game/collisionMask'
+import { HINT_DURATION_MS, hintFor, type HintId } from '../game/hints'
 import { startGameLoop } from '../game/loop'
 import {
   activeInteractables,
@@ -47,11 +53,13 @@ import {
   type WsClient,
 } from '../net/wsClient'
 import EscapeOverlay from './EscapeOverlay'
+import CollisionMaskTool from './CollisionMaskTool'
 import GateSlamOverlay from './GateSlamOverlay'
 import LobbyOverlay, { type LobbyMode } from './LobbyOverlay'
 import PartnerSim from './PartnerSim'
 import PodPropSprites from './PodPropSprites'
 import PowerHud from './PowerHud'
+import PowerStrainBanner from './PowerStrainBanner'
 import PropPlaceTool from './PropPlaceTool'
 import RoomPlateLayers from './RoomPlateLayers'
 import TaskModal from './TaskModal'
@@ -100,8 +108,8 @@ export default function WorldView() {
   })
   // Recreate each render — layout constants are tiny and HMR must pick up pin tweaks
   const podWorld = createPodWorld(pod)
-  const solidsRef = useRef(podWorld.solids)
-  solidsRef.current = podWorld.solids
+  const maskRef = useRef<CollisionMask>(createBorderMask())
+  const [maskEpoch, setMaskEpoch] = useState(0)
   const interactablesRef = useRef<readonly Interactable[]>(
     activeInteractables(createFlags(), createPodWorld('a').byId, 'a'),
   )
@@ -119,7 +127,10 @@ export default function WorldView() {
   const sawWallToast = useRef(false)
   const sawDimToast = useRef(false)
   const sawWaitLeverToast = useRef(false)
+  const sawKeypadFailToast = useRef(false)
   const lightsWereOnRef = useRef(false)
+  const prevLightsOnRef = useRef(false)
+  const prevPartnerReserveRef = useRef(0)
   const syncStartedAtRef = useRef<number | null>(null)
   const wasSyncingRef = useRef(false)
   const lightsOutClearRef = useRef<number | null>(null)
@@ -202,6 +213,7 @@ export default function WorldView() {
     sawWallToast.current = false
     sawDimToast.current = false
     sawWaitLeverToast.current = false
+    sawKeypadFailToast.current = false
     lightsWereOnRef.current = false
     syncStartedAtRef.current = null
     wasSyncingRef.current = false
@@ -316,59 +328,50 @@ export default function WorldView() {
     }
     if (taskId === 'wrench' && f.hasWrench) return
     if (taskId === 'rag' && f.hasRag) return
-    if (taskId === 'vase' && f.vaseSmashed) return
+    if (taskId === 'vase') {
+      if (!f.vaseSmashed && !(f.hasWrench && f.wallWiped)) return
+    }
     if (taskId === 'locker' && f.hasFuse) return
     if (taskId === 'fuse' && f.fuseInstalled) return
-    if (taskId === 'wall' && (f.wallWiped || !f.hasRag)) return
+    if (taskId === 'wall' && !f.hasRag) return
     if (taskId === 'keypad' && f.keypadDone) return
     setOpenTaskId(taskId)
   }, [])
 
   const closeTask = useCallback(() => setOpenTaskId(null), [])
 
+  const showToast = useCallback((id: HintId) => {
+    const line = hintFor(podRef.current, id)
+    if (!line) return
+    setAiToast(line)
+    const ms = HINT_DURATION_MS[id]
+    if (ms <= 0) return
+    window.setTimeout(() => setAiToast(null), ms)
+  }, [])
+
   useEffect(() => {
     if (!flags.gridOnline || sawGridToast.current) return
     sawGridToast.current = true
-    setAiToast(hintText('gridOnline'))
-    const id = window.setTimeout(
-      () => setAiToast(null),
-      HINT_DURATION_MS.gridOnline,
-    )
-    return () => window.clearTimeout(id)
-  }, [flags.gridOnline])
+    showToast('gridOnline')
+  }, [flags.gridOnline, showToast])
 
   useEffect(() => {
     if (!flags.codeKnown || sawCodeToast.current) return
     sawCodeToast.current = true
-    setAiToast(hintText('codeKnown'))
-    const id = window.setTimeout(
-      () => setAiToast(null),
-      HINT_DURATION_MS.codeKnown,
-    )
-    return () => window.clearTimeout(id)
-  }, [flags.codeKnown])
+    showToast('codeKnown')
+  }, [flags.codeKnown, showToast])
 
   useEffect(() => {
     if (!flags.hasFuse || sawFuseToast.current) return
     sawFuseToast.current = true
-    setAiToast(hintText('fuseLoot'))
-    const id = window.setTimeout(
-      () => setAiToast(null),
-      HINT_DURATION_MS.fuseLoot,
-    )
-    return () => window.clearTimeout(id)
-  }, [flags.hasFuse])
+    showToast('fuseLoot')
+  }, [flags.hasFuse, showToast])
 
   useEffect(() => {
     if (!flags.wallWiped || sawWallToast.current) return
     sawWallToast.current = true
-    setAiToast(hintText('wallWiped'))
-    const id = window.setTimeout(
-      () => setAiToast(null),
-      HINT_DURATION_MS.wallWiped,
-    )
-    return () => window.clearTimeout(id)
-  }, [flags.wallWiped])
+    showToast('wallWiped')
+  }, [flags.wallWiped, showToast])
 
   useEffect(() => {
     if (flags.lightsOn) lightsWereOnRef.current = true
@@ -380,14 +383,11 @@ export default function WorldView() {
     ) {
       return
     }
+    // Don't treat keypad-fail brownouts as the one-shot "lights dimmed" coach
+    if (flags.penaltyReserve > 0) return
     sawDimToast.current = true
-    setAiToast(hintText('lightsDimmed'))
-    const id = window.setTimeout(
-      () => setAiToast(null),
-      HINT_DURATION_MS.lightsDimmed,
-    )
-    return () => window.clearTimeout(id)
-  }, [flags.gridOnline, flags.lightsOn])
+    showToast('lightsDimmed')
+  }, [flags.gridOnline, flags.lightsOn, flags.penaltyReserve, showToast])
 
   useEffect(() => {
     if (sawWaitLeverToast.current || flags.gridOnline) return
@@ -395,13 +395,55 @@ export default function WorldView() {
     const partnerDone = pod === 'a' ? flags.leverB : flags.leverA
     if (!localDone || partnerDone) return
     sawWaitLeverToast.current = true
-    setAiToast(hintText('waitingPartnerLever'))
-    const id = window.setTimeout(
-      () => setAiToast(null),
-      HINT_DURATION_MS.waitingPartnerLever,
-    )
-    return () => window.clearTimeout(id)
-  }, [flags.leverA, flags.leverB, flags.gridOnline, pod])
+    showToast('waitingPartnerLever')
+  }, [flags.leverA, flags.leverB, flags.gridOnline, pod, showToast])
+
+  useEffect(() => {
+    if (flags.penaltyReserve <= 0) {
+      sawKeypadFailToast.current = false
+      return
+    }
+    if (sawKeypadFailToast.current) return
+    sawKeypadFailToast.current = true
+    showToast('keypadFail')
+  }, [flags.penaltyReserve, showToast])
+
+  // Partner hogging power → local blackout toast + flicker
+  useEffect(() => {
+    if (!flags.gridOnline || phase !== 'play') {
+      prevLightsOnRef.current = flags.lightsOn
+      prevPartnerReserveRef.current =
+        pod === 'a' ? flags.reserveB : flags.reserveA
+      return
+    }
+    const partnerReserve = pod === 'a' ? flags.reserveB : flags.reserveA
+    const partnerRose =
+      partnerReserve > prevPartnerReserveRef.current && partnerReserve >= 70
+    const lightsDied = prevLightsOnRef.current && !flags.lightsOn
+
+    if (partnerRose && lightsDied) {
+      showToast('partnerDrawing')
+      setFacilityFlicker((n) => n + 1)
+    } else if (
+      !prevLightsOnRef.current &&
+      flags.lightsOn &&
+      prevPartnerReserveRef.current > 0 &&
+      partnerReserve === 0
+    ) {
+      showToast('lightsRestored')
+    }
+
+    prevLightsOnRef.current = flags.lightsOn
+    prevPartnerReserveRef.current = partnerReserve
+  }, [
+    flags.gridOnline,
+    flags.lightsOn,
+    flags.reserveA,
+    flags.reserveB,
+    pod,
+    phase,
+    showToast,
+  ])
 
   useEffect(() => {
     if (flags.escaped) setOpenTaskId(null)
@@ -418,8 +460,7 @@ export default function WorldView() {
     const both = flags.bypassA && flags.bypassB
     if (!both) {
       if (wasSyncingRef.current) {
-        setAiToast(hintText('syncLost'))
-        window.setTimeout(() => setAiToast(null), HINT_DURATION_MS.syncLost)
+        showToast('syncLost')
       }
       wasSyncingRef.current = false
       syncStartedAtRef.current = null
@@ -444,7 +485,7 @@ export default function WorldView() {
     }, 50)
 
     return () => window.clearInterval(id)
-  }, [flags.bypassA, flags.bypassB, flags.fuseInstalled, flags.escaped, dispatch])
+  }, [flags.bypassA, flags.bypassB, flags.fuseInstalled, flags.escaped, dispatch, showToast])
 
   const triggerFacilityFlicker = useCallback(() => {
     setFacilityFlicker((n) => n + 1)
@@ -530,7 +571,6 @@ export default function WorldView() {
 
   const completeWall = useCallback(() => {
     dispatch({ type: 'wallWipe' })
-    setOpenTaskId(null)
   }, [dispatch])
 
   const reserveFuse = useCallback(() => {
@@ -556,6 +596,14 @@ export default function WorldView() {
     dispatch({ type: 'partnerYield' })
   }, [dispatch])
 
+  const failKeypad = useCallback(() => {
+    dispatch({ type: 'keypadFail' })
+  }, [dispatch])
+
+  const clearKeypadFail = useCallback(() => {
+    dispatch({ type: 'clearKeypadFail' })
+  }, [dispatch])
+
   const completeKeypad = useCallback(() => {
     dispatch({ type: 'keypadDone' })
     setOpenTaskId(null)
@@ -573,14 +621,17 @@ export default function WorldView() {
     controlsRef.current.darkMode = true
     if (worldRef.current) worldRef.current.dataset.dark = '1'
     setPhase('blackout')
-    setAiToast(hintText('lightsOut'))
-    if (lightsOutClearRef.current !== null) {
-      window.clearTimeout(lightsOutClearRef.current)
+    const line = hintFor(podRef.current, 'lightsOut')
+    if (line) {
+      setAiToast(line)
+      if (lightsOutClearRef.current !== null) {
+        window.clearTimeout(lightsOutClearRef.current)
+      }
+      lightsOutClearRef.current = window.setTimeout(() => {
+        setAiToast(null)
+        lightsOutClearRef.current = null
+      }, HINT_DURATION_MS.lightsOut)
     }
-    lightsOutClearRef.current = window.setTimeout(() => {
-      setAiToast(null)
-      lightsOutClearRef.current = null
-    }, HINT_DURATION_MS.lightsOut)
   }, [])
 
   useEffect(() => {
@@ -602,6 +653,28 @@ export default function WorldView() {
   }, [])
 
   useEffect(() => {
+    let cancelled = false
+    maskRef.current = createBorderMask()
+    setMaskEpoch((n) => n + 1)
+
+    void loadCollisionMask(collisionMaskUrl(pod)).then((loaded) => {
+      if (cancelled) return
+      if (loaded) {
+        maskRef.current = loaded
+        setMaskEpoch((n) => n + 1)
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [pod])
+
+  const onMaskEdited = useCallback(() => {
+    setMaskEpoch((n) => n + 1)
+  }, [])
+
+  useEffect(() => {
     const worldEl = worldRef.current
     const playerEl = playerRef.current
     if (!worldEl || !playerEl) return
@@ -612,7 +685,7 @@ export default function WorldView() {
         playerEl,
         promptEl: promptRef.current,
       },
-      solidsRef,
+      maskRef,
       interactablesRef,
       controls: controlsRef.current,
       onRequestTask: requestTask,
@@ -633,16 +706,51 @@ export default function WorldView() {
     connectionMode === 'solo' && phase === 'play' && !matchBroken
   const reserveYou = pod === 'b' ? flags.reserveB : flags.reserveA
   const reservePartner = pod === 'b' ? flags.reserveA : flags.reserveB
+  const youDevice =
+    pod === 'b'
+      ? flags.reserveB >= 80
+        ? 'keypad'
+        : null
+      : flags.reserveA >= FUSE_RESERVE
+        ? 'fuse'
+        : null
+  const partnerDevice =
+    pod === 'a'
+      ? flags.reserveB >= 80
+        ? 'keypad'
+        : flags.reserveB > 0
+          ? 'device'
+          : null
+      : flags.reserveA >= FUSE_RESERVE
+        ? 'fuse'
+        : flags.reserveA > 0
+          ? 'device'
+          : null
+  const darkNow = effectiveDark(flags, lockdownStarted)
+  const flashlightR = !darkNow
+    ? FLASHLIGHT_RADIUS
+    : free < 15
+      ? Math.round(FLASHLIGHT_RADIUS * 0.55)
+      : free < 30
+        ? Math.round(FLASHLIGHT_RADIUS * 0.72)
+        : FLASHLIGHT_RADIUS
+  const showStrainBanner =
+    flags.gridOnline &&
+    !flags.lightsOn &&
+    phase === 'play' &&
+    !matchBroken &&
+    !flags.escaped &&
+    openTaskId === null
 
   return (
-    <div className="flex w-fit max-w-full flex-col items-center">
+    <div className="relative" style={{ width: WORLD_W, height: WORLD_H }}>
       <div
         className="relative shrink-0"
         style={{ width: WORLD_W, height: WORLD_H }}
       >
         <div
           ref={worldRef}
-          className="pod-world relative overflow-hidden rounded-sm border border-neutral-700 bg-neutral-900"
+          className="pod-world relative overflow-hidden bg-black shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_24px_80px_rgba(0,0,0,0.65)]"
           data-dark="0"
           style={
             {
@@ -650,7 +758,7 @@ export default function WorldView() {
               height: WORLD_H,
               '--fx': `${WORLD_W / 2}px`,
               '--fy': `${WORLD_H / 2}px`,
-              '--flashlight-r': `${FLASHLIGHT_RADIUS}px`,
+              '--flashlight-r': `${flashlightR}px`,
             } as CSSProperties
           }
         >
@@ -702,6 +810,13 @@ export default function WorldView() {
             aria-hidden
           />
 
+          <CollisionMaskTool
+            pod={pod}
+            maskRef={maskRef}
+            maskEpoch={maskEpoch}
+            onMaskEdited={onMaskEdited}
+          />
+
           <PropPlaceTool
             markers={podWorld.interactables.map((item) => ({
               id: item.id,
@@ -711,10 +826,23 @@ export default function WorldView() {
           />
 
           <PowerHud
-            visible={flags.gridOnline}
+            visible={flags.gridOnline && phase === 'play' && !flags.escaped}
             free={free}
             reserveYou={reserveYou}
             reservePartner={reservePartner}
+            penalty={flags.penaltyReserve}
+            lightsOn={flags.lightsOn}
+            youDevice={youDevice}
+            partnerDevice={partnerDevice}
+          />
+
+          <PowerStrainBanner
+            visible={showStrainBanner}
+            free={free}
+            reservePartner={reservePartner}
+            reserveYou={reserveYou}
+            partnerDevice={partnerDevice}
+            youDevice={youDevice}
           />
 
           {phase === 'lobby' && (
@@ -800,15 +928,23 @@ export default function WorldView() {
           )}
           {openTaskId === 'wall' && (
             <TaskModal title="Grimy wall" onClose={closeTask}>
-              <WallTask hasRag={flags.hasRag} onComplete={completeWall} />
+              <WallTask
+                hasRag={flags.hasRag}
+                wallWiped={flags.wallWiped}
+                onComplete={completeWall}
+              />
             </TaskModal>
           )}
           {openTaskId === 'keypad' && (
             <TaskModal title="Keypad" onClose={closeTask}>
               <KeypadTask
                 reserved={flags.reserveB >= 80}
+                freePower={free}
+                lightsOn={flags.lightsOn}
                 onReserve={reserveKeypad}
                 onClearReserve={clearKeypadReserve}
+                onFail={failKeypad}
+                onClearFail={clearKeypadFail}
                 onSuccess={completeKeypad}
               />
             </TaskModal>
@@ -818,6 +954,9 @@ export default function WorldView() {
               <FuseTask
                 canReserve={canReserveFuse}
                 reserved={flags.reserveA >= FUSE_RESERVE}
+                freePower={free}
+                partnerReserve={flags.reserveB}
+                lightsOn={flags.lightsOn}
                 onReserve={reserveFuse}
                 onInstall={installFuse}
                 onClearReserve={clearFuseReserve}
@@ -838,6 +977,7 @@ export default function WorldView() {
                 syncProgress={syncProgress}
                 onHoldChange={setLocalBypass}
                 solo={connectionMode === 'solo'}
+                showSyncBar={pod === 'a'}
               />
             </TaskModal>
           )}
@@ -871,34 +1011,39 @@ export default function WorldView() {
         </div>
       </div>
 
-      {/* Fixed chrome height so solo controls outside the pod never nudge the 1280×720 frame */}
-      <div className="mt-3 flex min-h-20 w-full shrink-0 flex-col items-center justify-start">
-        <PartnerSim
-          enabled={showPartnerSim}
-          localPod={pod}
-          partnerLeverDone={pod === 'a' ? flags.leverB : flags.leverA}
-          onPartnerLever={completePartnerLever}
-          gridOn={flags.gridOnline}
-          wallWiped={flags.wallWiped}
-          onPartnerWipe={completePartnerWipe}
-          codeKnown={flags.codeKnown}
-          keypadDone={flags.keypadDone}
-          partnerKeypadOpen={flags.reserveB > 0 && !flags.keypadDone}
-          onPartnerKeypadOpen={completePartnerKeypadOpen}
-          onPartnerKeypadFinish={completePartnerKeypadFinish}
-          partnerReserve={pod === 'a' ? flags.reserveB : flags.reserveA}
-          onPartnerYield={completePartnerYield}
-          fuseInstalled={flags.fuseInstalled}
-          partnerBypassHeld={pod === 'a' ? flags.bypassB : flags.bypassA}
-          onPartnerBypassHold={setPartnerBypass}
-          vaseSmashed={flags.vaseSmashed}
-          onPartnerVaseSmash={completePartnerVaseSmash}
-          partnerHasFuse={flags.hasFuse}
-          onPartnerFuseLoot={completePartnerFuseLoot}
-          onPartnerFuseInstall={completePartnerFuseInstall}
-          escaped={flags.escaped}
-        />
-      </div>
+      {/* Portal out of the CSS scale transform so letterbox chrome stays viewport-fixed */}
+      {createPortal(
+        <div className="pointer-events-none fixed inset-x-0 bottom-3 z-[10300] flex justify-center">
+          <div className="pointer-events-auto">
+            <PartnerSim
+              enabled={showPartnerSim}
+              localPod={pod}
+              partnerLeverDone={pod === 'a' ? flags.leverB : flags.leverA}
+              onPartnerLever={completePartnerLever}
+              gridOn={flags.gridOnline}
+              wallWiped={flags.wallWiped}
+              onPartnerWipe={completePartnerWipe}
+              codeKnown={flags.codeKnown}
+              keypadDone={flags.keypadDone}
+              partnerKeypadOpen={flags.reserveB > 0 && !flags.keypadDone}
+              onPartnerKeypadOpen={completePartnerKeypadOpen}
+              onPartnerKeypadFinish={completePartnerKeypadFinish}
+              partnerReserve={pod === 'a' ? flags.reserveB : flags.reserveA}
+              onPartnerYield={completePartnerYield}
+              fuseInstalled={flags.fuseInstalled}
+              partnerBypassHeld={pod === 'a' ? flags.bypassB : flags.bypassA}
+              onPartnerBypassHold={setPartnerBypass}
+              vaseSmashed={flags.vaseSmashed}
+              onPartnerVaseSmash={completePartnerVaseSmash}
+              partnerHasFuse={flags.hasFuse}
+              onPartnerFuseLoot={completePartnerFuseLoot}
+              onPartnerFuseInstall={completePartnerFuseInstall}
+              escaped={flags.escaped}
+            />
+          </div>
+        </div>,
+        document.body,
+      )}
     </div>
   )
 }

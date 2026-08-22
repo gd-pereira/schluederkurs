@@ -2,11 +2,13 @@ import type { MatchFlags } from '../game/matchFlags'
 import {
   withBypass,
   withClearFuseReserve,
+  withClearKeypadFail,
   withEscape,
   withFuse,
   withFuseInstalled,
   withFuseReserve,
   withKeypadDone,
+  withKeypadFail,
   withKeypadReserve,
   withLeverPulled,
   withPartnerYield,
@@ -27,6 +29,8 @@ export type MatchEvent =
   | { type: 'vaseSmash' }
   | { type: 'keypadReserve' }
   | { type: 'keypadDone' }
+  | { type: 'keypadFail' }
+  | { type: 'clearKeypadFail' }
   | { type: 'fuseLoot' }
   | { type: 'fuseReserve' }
   | { type: 'clearFuseReserve' }
@@ -55,6 +59,10 @@ export function applyMatchEvent(
       return withKeypadReserve(flags)
     case 'keypadDone':
       return withKeypadDone(flags)
+    case 'keypadFail':
+      return withKeypadFail(flags)
+    case 'clearKeypadFail':
+      return withClearKeypadFail(flags)
     case 'fuseLoot':
       return withFuse(flags)
     case 'fuseReserve':
@@ -76,7 +84,6 @@ export function applyMatchEvent(
   }
 }
 
-/** Local lever / bypass side for this pod */
 export function localSide(pod: PodId): PodId {
   return pod
 }
@@ -91,7 +98,6 @@ export function defaultWsUrl(): string {
   if (env) return env
   if (typeof window === 'undefined') return 'ws://localhost:8080'
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  // Vite dev → talk to Node on 8080; production → same host
   if (window.location.port === '5173' || window.location.port === '4173') {
     return `${proto}//${window.location.hostname}:8080`
   }

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { modalAssetUrl } from '../../game/assets'
-import { VASE_CODE } from '../../game/matchFlags'
+import { CODE_CLUE_ODDS } from '../../game/matchFlags'
 import OptionalAssetImg from '../OptionalAssetImg'
 
 type VaseTaskProps = {
@@ -25,11 +25,13 @@ export default function VaseTask({
           alt=""
           className="mb-4 mx-auto max-h-40 w-auto object-contain"
         />
-        <p className="text-sm text-neutral-600">Shards everywhere. The code is:</p>
-        <p className="mt-3 font-mono text-4xl font-bold tracking-[0.2em] text-neutral-900">
-          {VASE_CODE}
+        <p className="text-sm text-neutral-600">
+          Shards. Odd slots only — evens are someone else’s problem.
         </p>
-        <p className="mt-3 text-xs text-neutral-500">Esc to close</p>
+        <p className="mt-3 font-mono text-3xl font-bold tracking-[0.2em] text-neutral-900">
+          {CODE_CLUE_ODDS}
+        </p>
+        <p className="mt-3 text-xs text-neutral-500">Esc to close — tell your partner</p>
       </div>
     )
   }
@@ -43,8 +45,8 @@ export default function VaseTask({
           className="mb-4 mx-auto max-h-40 w-auto object-contain"
         />
         <p className="text-sm leading-relaxed text-neutral-700">
-          Fancy vase. You need a wrench — and the other pod still has to wipe that
-          wall clue first.
+          Sealed ceramic on the pedestal. Needs a wrench — and whatever the other
+          pod was supposed to clear first.
         </p>
       </div>
     )
@@ -58,7 +60,7 @@ export default function VaseTask({
         className="mb-4 mx-auto max-h-40 w-auto object-contain"
       />
       <p className="text-sm leading-relaxed text-neutral-700">
-        The placard said smash it. Facility insurance is going to love this.
+        The display is sealed. Facility insurance is going to love this.
       </p>
       <button
         type="button"

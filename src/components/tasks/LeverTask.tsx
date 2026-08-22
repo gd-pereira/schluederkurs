@@ -6,7 +6,7 @@ export default function LeverTask({ onComplete }: LeverTaskProps) {
   return (
     <div>
       <p className="text-sm leading-relaxed text-neutral-700">
-        Local breaker lever. Pull it and hope the other pod does the same.
+        Local breaker lever. The grid won’t wake until both pods pull theirs.
       </p>
       <button
         type="button"

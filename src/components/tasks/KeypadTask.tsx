@@ -1,28 +1,45 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { KEYPAD_FAIL_MS, KEYPAD_RESERVE } from '../../game/constants'
 import { modalAssetUrl } from '../../game/assets'
 import { VASE_CODE } from '../../game/matchFlags'
 import OptionalAssetImg from '../OptionalAssetImg'
 
 type KeypadTaskProps = {
   reserved: boolean
+  freePower: number
+  lightsOn: boolean
   onReserve: () => void
   onClearReserve: () => void
+  onFail: () => void
+  onClearFail: () => void
   onSuccess: () => void
 }
 
 export default function KeypadTask({
   reserved,
+  freePower,
+  lightsOn,
   onReserve,
   onClearReserve,
+  onFail,
+  onClearFail,
   onSuccess,
 }: KeypadTaskProps) {
   const [digits, setDigits] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const failTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
     onReserve()
-    return () => onClearReserve()
-  }, [onReserve, onClearReserve])
+    return () => {
+      onClearReserve()
+      if (failTimerRef.current !== null) {
+        window.clearTimeout(failTimerRef.current)
+        failTimerRef.current = null
+      }
+      onClearFail()
+    }
+  }, [onReserve, onClearReserve, onClearFail])
 
   function press(d: string) {
     setError(null)
@@ -39,8 +56,16 @@ export default function KeypadTask({
       onSuccess()
       return
     }
-    setError('Wrong code. Facility is judging you.')
+    setError('Rejected. Grid hiccup.')
     setDigits('')
+    onFail()
+    if (failTimerRef.current !== null) {
+      window.clearTimeout(failTimerRef.current)
+    }
+    failTimerRef.current = window.setTimeout(() => {
+      onClearFail()
+      failTimerRef.current = null
+    }, KEYPAD_FAIL_MS)
   }
 
   useEffect(() => {
@@ -72,7 +97,7 @@ export default function KeypadTask({
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [onSuccess])
+  }, [onSuccess, onFail, onClearFail])
 
   return (
     <div>
@@ -82,14 +107,28 @@ export default function KeypadTask({
         className="mb-4 mx-auto max-h-36 w-auto object-contain"
       />
       <p className="text-sm text-neutral-700">
-        Painting keypad. Draws 80% while open — don&apos;t leave your partner in
-        the dark forever.
+        Painting circuit. While this is open it reserves{' '}
+        <strong>{KEYPAD_RESERVE}%</strong> of the shared grid — partner’s lights
+        die and they can’t run the fuse bay.
       </p>
-      {reserved && (
-        <p className="mt-2 text-xs font-semibold text-amber-700">
-          80% reserved
+
+      <div className="mt-3 rounded border-2 border-amber-700/40 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+        <p>
+          Free now: <strong>{Math.round(freePower)}%</strong>
+          {' · '}
+          Lights:{' '}
+          <strong className={lightsOn ? 'text-teal-700' : 'text-red-700'}>
+            {lightsOn ? 'ON' : 'OUT (both pods)'}
+          </strong>
         </p>
-      )}
+        {reserved && (
+          <p className="mt-1 font-semibold">
+            You are holding {KEYPAD_RESERVE}% — finish the code or close to give
+            power back.
+          </p>
+        )}
+      </div>
+
       <p className="mt-4 font-mono text-3xl tracking-[0.35em] text-neutral-900">
         {digits.padEnd(4, '_')}
       </p>

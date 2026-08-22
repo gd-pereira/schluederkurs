@@ -1,5 +1,6 @@
 import {
   FUSE_RESERVE,
+  KEYPAD_FAIL_PENALTY,
   KEYPAD_RESERVE,
   LIGHT_OFF_BELOW,
   LIGHT_ON_ABOVE,
@@ -30,9 +31,18 @@ export type MatchFlags = {
   escapedAt: number | null
   reserveA: number
   reserveB: number
+  /** Temporary spike from wrong keypad (shared brownout) */
+  penaltyReserve: number
 }
 
+/** Full answer — never shown complete on one screen */
 export const VASE_CODE = '8977'
+
+/** Pod A vase shards: odd slots (1st + 3rd) */
+export const CODE_CLUE_ODDS = '8 · _ · 7 · _'
+
+/** Pod B wiped wall: even slots (2nd + 4th) */
+export const CODE_CLUE_EVENS = '_ · 9 · _ · 7'
 
 export function createFlags(): MatchFlags {
   return {
@@ -56,16 +66,20 @@ export function createFlags(): MatchFlags {
     escapedAt: null,
     reserveA: 0,
     reserveB: 0,
+    penaltyReserve: 0,
   }
 }
 
 export function freePower(flags: MatchFlags): number {
-  return Math.max(0, 100 - flags.reserveA - flags.reserveB)
+  return Math.max(
+    0,
+    100 - flags.reserveA - flags.reserveB - flags.penaltyReserve,
+  )
 }
 
 /** Free power if we cleared our current fuse reserve (for open checks) */
 export function freePowerWithoutReserveA(flags: MatchFlags): number {
-  return Math.max(0, 100 - flags.reserveB)
+  return Math.max(0, 100 - flags.reserveB - flags.penaltyReserve)
 }
 
 /** Update lightsOn from free power while grid is online */
@@ -119,7 +133,6 @@ export function withRag(flags: MatchFlags): MatchFlags {
 }
 
 export function withWallWiped(flags: MatchFlags): MatchFlags {
-  // Partner sim / sync: wiping implies rag was available
   return { ...flags, wallWiped: true, hasRag: true }
 }
 
@@ -142,7 +155,23 @@ export function withKeypadDone(flags: MatchFlags): MatchFlags {
   return applyLightHysteresis({
     ...flags,
     reserveB: 0,
+    penaltyReserve: 0,
     keypadDone: true,
+  })
+}
+
+/** Wrong code: spike penalty so free power collapses (lights brown out) */
+export function withKeypadFail(flags: MatchFlags): MatchFlags {
+  return applyLightHysteresis({
+    ...flags,
+    penaltyReserve: KEYPAD_FAIL_PENALTY,
+  })
+}
+
+export function withClearKeypadFail(flags: MatchFlags): MatchFlags {
+  return applyLightHysteresis({
+    ...flags,
+    penaltyReserve: 0,
   })
 }
 
@@ -157,7 +186,6 @@ export function withPartnerYield(flags: MatchFlags): MatchFlags {
   })
 }
 
-/** Reserve 70% for fuse if enough free power (excluding current A reserve) */
 export function withFuseReserve(flags: MatchFlags): MatchFlags {
   if (freePowerWithoutReserveA(flags) < FUSE_RESERVE) {
     return flags
@@ -227,14 +255,14 @@ export function activeInteractables(
 
   if (pod === 'b') {
     if (!flags.hasRag) list.push(...take('rag'))
-    if (flags.hasRag && !flags.wallWiped) list.push(...take('wall'))
+    if (flags.hasRag) list.push(...take('wall'))
     if (flags.codeKnown && !flags.keypadDone) list.push(...take('keypad'))
     if (flags.fuseInstalled) list.push(...take('bypass'))
     return list
   }
 
   if (!flags.hasWrench) list.push(...take('wrench'))
-  if (flags.hasWrench && flags.wallWiped && !flags.vaseSmashed) {
+  if (flags.vaseSmashed || (flags.hasWrench && flags.wallWiped)) {
     list.push(...take('vase'))
   }
   if (flags.keypadDone && !flags.hasFuse) list.push(...take('locker'))

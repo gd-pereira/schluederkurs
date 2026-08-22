@@ -35,6 +35,12 @@ export const BLACKOUT_HOLD_MS = 400
 /** Pod B keypad reserve while open */
 export const KEYPAD_RESERVE = 80
 
+/** Extra reserve spike after wrong keypad code (forces brownout) */
+export const KEYPAD_FAIL_PENALTY = 25
+
+/** How long the fail penalty lasts (ms) */
+export const KEYPAD_FAIL_MS = 2000
+
 /** Pod A fuse install reserve while open */
 export const FUSE_RESERVE = 70
 

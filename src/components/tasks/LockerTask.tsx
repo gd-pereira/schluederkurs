@@ -6,7 +6,7 @@ export default function LockerTask({ onComplete }: LockerTaskProps) {
   return (
     <div>
       <p className="text-sm leading-relaxed text-neutral-700">
-        Partner cracked the keypad. Something useful clicked into place inside.
+        Locker latch just clicked. Something useful is waiting inside.
       </p>
       <button
         type="button"
