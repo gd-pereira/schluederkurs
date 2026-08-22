@@ -11,3 +11,24 @@ body {
   min-height: 100svh;
   overflow-x: hidden;
 }
+
+/* Facility blackout + radial flashlight (CSS vars --fx/--fy updated in rAF) */
+.flashlight-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    circle var(--flashlight-r, 168px) at var(--fx, 50%) var(--fy, 50%),
+    transparent 0%,
+    transparent 38%,
+    rgba(2, 4, 8, 0.72) 62%,
+    rgba(0, 0, 0, 0.94) 100%
+  );
+  transition: opacity 180ms ease-out;
+}
+
+.pod-world[data-dark='1'] .flashlight-overlay {
+  opacity: 1;
+}

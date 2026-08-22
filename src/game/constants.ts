@@ -14,3 +14,6 @@ export const PLAYER_FOOT_H = 16
 /** Spawn: foot top-left near center */
 export const PLAYER_START_X = WORLD_W / 2 - PLAYER_FOOT_W / 2
 export const PLAYER_START_Y = WORLD_H / 2 - PLAYER_FOOT_H / 2
+
+/** Soft-edge radius of the flashlight hole (px) */
+export const FLASHLIGHT_RADIUS = 168

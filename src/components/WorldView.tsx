@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type CSSProperties } from 'react'
 import {
+  FLASHLIGHT_RADIUS,
   PLAYER_SPRITE_H,
   PLAYER_SPRITE_W,
   WALL_THICKNESS,
@@ -13,17 +14,20 @@ const prop = createPlaceholderCrate()
 const solids = createWorldSolids([prop])
 
 export default function WorldView() {
+  const worldRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<HTMLDivElement>(null)
   const propRef = useRef<HTMLDivElement>(null)
   const lockedRef = useRef<HTMLParagraphElement>(null)
 
   useEffect(() => {
+    const worldEl = worldRef.current
     const playerEl = playerRef.current
     const propEl = propRef.current
-    if (!playerEl || !propEl) return
+    if (!worldEl || !playerEl || !propEl) return
 
     const loop = startGameLoop(
       {
+        worldEl,
         playerEl,
         propEl,
         lockedEl: lockedRef.current,
@@ -38,8 +42,18 @@ export default function WorldView() {
   return (
     <div className="relative" style={{ width: WORLD_W, height: WORLD_H }}>
       <div
-        className="relative overflow-hidden rounded-sm border border-neutral-700 bg-neutral-900"
-        style={{ width: WORLD_W, height: WORLD_H }}
+        ref={worldRef}
+        className="pod-world relative overflow-hidden rounded-sm border border-neutral-700 bg-neutral-900"
+        data-dark="0"
+        style={
+          {
+            width: WORLD_W,
+            height: WORLD_H,
+            '--fx': `${WORLD_W / 2}px`,
+            '--fy': `${WORLD_H / 2}px`,
+            '--flashlight-r': `${FLASHLIGHT_RADIUS}px`,
+          } as CSSProperties
+        }
       >
         {/* Wall visuals (match collision thickness) */}
         <div
@@ -98,6 +112,9 @@ export default function WorldView() {
           }}
           aria-label="Player"
         />
+
+        {/* CSS flashlight: full dark when data-dark=1; hole follows --fx/--fy from rAF */}
+        <div className="flashlight-overlay" aria-hidden />
       </div>
 
       <p

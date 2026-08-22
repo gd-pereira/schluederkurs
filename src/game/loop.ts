@@ -13,6 +13,7 @@ import type { AABB, Prop } from './types'
 export type LoopHandles = {
   playerEl: HTMLElement
   propEl: HTMLElement
+  worldEl: HTMLElement
   lockedEl: HTMLElement | null
 }
 
@@ -34,6 +35,8 @@ export function startGameLoop(
 ): GameLoop {
   const keys = new Set<string>()
   let inputLocked = false
+  /** Temp debug: L toggles facility blackout + flashlight */
+  let darkMode = false
   let rafId = 0
   let lastTime = performance.now()
 
@@ -51,6 +54,16 @@ export function startGameLoop(
     const pos = spriteTopLeftFromFoot(foot)
     handles.playerEl.style.transform = `translate(${pos.x}px, ${pos.y}px)`
     handles.playerEl.style.zIndex = String(Math.floor(footBottom(foot)))
+
+    // Flashlight center = player torso (sprite mid), updated in rAF — not React state
+    const fx = pos.x + PLAYER_SPRITE_W / 2
+    const fy = pos.y + PLAYER_SPRITE_H * 0.4
+    handles.worldEl.style.setProperty('--fx', `${fx}px`)
+    handles.worldEl.style.setProperty('--fy', `${fy}px`)
+  }
+
+  function writeDarkMode() {
+    handles.worldEl.dataset.dark = darkMode ? '1' : '0'
   }
 
   function writeLockedHint() {
@@ -64,6 +77,11 @@ export function startGameLoop(
     if (key === 'f') {
       inputLocked = !inputLocked
       writeLockedHint()
+      return
+    }
+    if (key === 'l') {
+      darkMode = !darkMode
+      writeDarkMode()
       return
     }
     if (key === 'w' || key === 'a' || key === 's' || key === 'd') {
@@ -104,6 +122,7 @@ export function startGameLoop(
   }
 
   writePlayerDom()
+  writeDarkMode()
   writeLockedHint()
   window.addEventListener('keydown', onKeyDown)
   window.addEventListener('keyup', onKeyUp)
