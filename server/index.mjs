@@ -40,9 +40,12 @@ function makeCode() {
 
 function setCors(req, res) {
   const origin = req.headers.origin || ''
+  // Same-origin prod needs no CORS; Vite/dev may hit :8080 from :5173/:4173
   if (
     origin.startsWith('http://localhost:') ||
-    origin.startsWith('http://127.0.0.1:')
+    origin.startsWith('http://127.0.0.1:') ||
+    origin.startsWith('https://localhost:') ||
+    origin.startsWith('https://127.0.0.1:')
   ) {
     res.setHeader('Access-Control-Allow-Origin', origin)
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
@@ -74,7 +77,12 @@ function contentType(filePath) {
   if (ext === '.json') return 'application/json'
   if (ext === '.svg') return 'image/svg+xml'
   if (ext === '.png') return 'image/png'
+  if (ext === '.webp') return 'image/webp'
+  if (ext === '.jpg' || ext === '.jpeg') return 'image/jpeg'
   if (ext === '.ico') return 'image/x-icon'
+  if (ext === '.mp4') return 'video/mp4'
+  if (ext === '.webm') return 'video/webm'
+  if (ext === '.woff') return 'font/woff'
   if (ext === '.woff2') return 'font/woff2'
   return 'application/octet-stream'
 }
@@ -168,9 +176,27 @@ const server = http.createServer(async (req, res) => {
 
 const wss = new WebSocketServer({ server })
 
+/** Keep reverse-proxy idle timeouts from killing lobby / mid-match sockets */
+const HEARTBEAT_MS = 25_000
+const heartbeat = setInterval(() => {
+  for (const ws of wss.clients) {
+    if (ws.isAlive === false) {
+      ws.terminate()
+      continue
+    }
+    ws.isAlive = false
+    ws.ping()
+  }
+}, HEARTBEAT_MS)
+wss.on('close', () => clearInterval(heartbeat))
+
 wss.on('connection', (ws) => {
   /** @type {{ code: string, pod: 'a' | 'b' } | null} */
   let membership = null
+  ws.isAlive = true
+  ws.on('pong', () => {
+    ws.isAlive = true
+  })
 
   ws.on('message', (raw) => {
     let msg
@@ -182,7 +208,10 @@ wss.on('connection', (ws) => {
 
     if (msg.type === 'hello') {
       const role = msg.role === 'join' ? 'join' : 'host'
-      let code = typeof msg.code === 'string' ? msg.code.toUpperCase().trim() : ''
+      let code =
+        typeof msg.code === 'string'
+          ? msg.code.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4)
+          : ''
 
       if (role === 'host') {
         do {
@@ -191,7 +220,11 @@ wss.on('connection', (ws) => {
         rooms.set(code, { clients: [] })
       } else {
         if (!code || !rooms.has(code)) {
-          send(ws, { type: 'error', message: 'Room not found' })
+          send(ws, {
+            type: 'error',
+            message:
+              'Room not found — host may have disconnected, or Start Game again',
+          })
           return
         }
       }
@@ -215,6 +248,12 @@ wss.on('connection', (ws) => {
         peers: room.clients.length,
       })
       broadcast(room, { type: 'peerJoined', peers: room.clients.length, pod }, ws)
+      return
+    }
+
+    if (msg.type === 'keepalive') {
+      // Data-frame keepalive so reverse proxies reset idle timers (lobby + match).
+      send(ws, { type: 'keepalive' })
       return
     }
 

@@ -22,10 +22,13 @@ export type WsClient = {
   close: () => void
 }
 
+const KEEPALIVE_MS = 20_000
+
 export function connectWs(handlers: WsHandlers): WsClient {
   const url = defaultWsUrl()
   const ws = new WebSocket(url)
   const queue: Record<string, unknown>[] = []
+  let keepaliveId: ReturnType<typeof setInterval> | null = null
 
   function flush() {
     while (queue.length > 0 && ws.readyState === WebSocket.OPEN) {
@@ -34,8 +37,25 @@ export function connectWs(handlers: WsHandlers): WsClient {
     }
   }
 
+  function stopKeepalive() {
+    if (keepaliveId !== null) {
+      clearInterval(keepaliveId)
+      keepaliveId = null
+    }
+  }
+
+  function startKeepalive() {
+    stopKeepalive()
+    keepaliveId = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'keepalive' }))
+      }
+    }, KEEPALIVE_MS)
+  }
+
   ws.addEventListener('open', () => {
     flush()
+    startKeepalive()
     handlers.onOpen?.()
   })
 
@@ -89,12 +109,17 @@ export function connectWs(handlers: WsHandlers): WsClient {
           msg.from === 'b' ? 'b' : 'a',
         )
         break
+      case 'keepalive':
+        break
       default:
         break
     }
   })
 
-  ws.addEventListener('close', () => handlers.onClose?.())
+  ws.addEventListener('close', () => {
+    stopKeepalive()
+    handlers.onClose?.()
+  })
   ws.addEventListener('error', () => {
     handlers.onError?.(
       `Cannot reach game server at ${url}. Is npm run server / dev:all running?`,
@@ -111,9 +136,14 @@ export function connectWs(handlers: WsHandlers): WsClient {
     },
     close() {
       queue.length = 0
+      stopKeepalive()
       ws.close()
     },
   }
+}
+
+export function normalizeRoomCode(code: string): string {
+  return code.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4)
 }
 
 export function helloHost(client: WsClient) {
@@ -121,7 +151,7 @@ export function helloHost(client: WsClient) {
 }
 
 export function helloJoin(client: WsClient, code: string) {
-  client.send({ type: 'hello', role: 'join', code })
+  client.send({ type: 'hello', role: 'join', code: normalizeRoomCode(code) })
 }
 
 export function sendReady(client: WsClient, ready: boolean) {

@@ -119,6 +119,8 @@ export default function PropPlaceTool({
   const draft =
     cornerA && cursor ? toRect(cornerA, cursor) : null
 
+  if (import.meta.env.PROD) return null
+
   if (!active) {
     return (
       <p className="pointer-events-none absolute bottom-2 right-2 z-[10080] rounded bg-black/70 px-2 py-1 text-[11px] text-neutral-400">

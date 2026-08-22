@@ -44,7 +44,6 @@ import {
   connectWs,
   helloHost,
   helloJoin,
-  sendGhost,
   sendMatchEvent,
   sendReady,
   type WsClient,
@@ -192,11 +191,13 @@ export default function WorldView() {
 
   const closeWs = useCallback(() => {
     intentionalCloseRef.current = true
-    wsRef.current?.close()
+    const prev = wsRef.current
     wsRef.current = null
+    prev?.close()
+    // close() is async — keep the flag until after the close event can fire
     window.setTimeout(() => {
       intentionalCloseRef.current = false
-    }, 0)
+    }, 50)
   }, [])
 
   const resetMatch = useCallback(() => {
@@ -256,7 +257,14 @@ export default function WorldView() {
           setConnectionMode('online')
           setLobbyMode(role === 'host' ? 'host' : 'join')
         },
-        onError: (message) => setLobbyStatus(message),
+        onError: (message) => {
+          setLobbyStatus(message)
+          // Failed join must not keep a stale hosted code on screen
+          if (role === 'join') {
+            setRoomCode(null)
+            setPeers(0)
+          }
+        },
         onPeerJoined: (p) => setPeers(p),
         onPeerLeft: (p) => {
           setPeers(p)
@@ -274,14 +282,20 @@ export default function WorldView() {
         onStartLockdown: () => startLockdownRef.current(),
         onMatchEvent: (event) => dispatch(event, { remote: true }),
         onGhost: () => {
-          // Separate chambers — partner sprite stays fully invisible.
-          const el = ghostRef.current
-          if (el) el.style.opacity = '0'
+          // Separate chambers — partner stays fully invisible (no DOM updates).
         },
         onClose: () => {
           if (intentionalCloseRef.current) return
-          if (phaseRef.current === 'landing') setLobbyStatus('Disconnected')
-          else breakMatch()
+          if (phaseRef.current === 'landing') {
+            // Stale codes after a drop cause "Room not found" for the joiner
+            setRoomCode(null)
+            setPeers(0)
+            setLocalReady(false)
+            setPeerReady(false)
+            setLobbyStatus('Connection lost — Start Game or Join again')
+          } else {
+            breakMatch()
+          }
         },
       })
       wsRef.current = client
@@ -631,11 +645,6 @@ export default function WorldView() {
     return () => window.clearTimeout(id)
   }, [phase])
 
-  const onPose = useCallback((x: number, y: number) => {
-    if (connectionRef.current !== 'online' || !wsRef.current) return
-    sendGhost(wsRef.current, x, y)
-  }, [])
-
   useEffect(() => {
     let cancelled = false
     maskRef.current = createBorderMask()
@@ -673,12 +682,12 @@ export default function WorldView() {
       interactablesRef,
       controls: controlsRef.current,
       onRequestTask: requestTask,
-      onToggleDebugDark: toggleDebugDark,
-      onPose,
+      // Dev-only flashlight cheat (L) — omitted from production builds
+      onToggleDebugDark: import.meta.env.DEV ? toggleDebugDark : undefined,
     })
 
     return () => loop.stop()
-  }, [requestTask, toggleDebugDark, onPose])
+  }, [requestTask, toggleDebugDark])
 
   const free = freePower(flags)
   const canReserveFuse = freePowerWithoutReserveA(flags) >= FUSE_RESERVE
@@ -797,20 +806,24 @@ export default function WorldView() {
             aria-hidden
           />
 
-          <CollisionMaskTool
-            pod={pod}
-            maskRef={maskRef}
-            maskEpoch={maskEpoch}
-            onMaskEdited={onMaskEdited}
-          />
+          {import.meta.env.DEV && (
+            <>
+              <CollisionMaskTool
+                pod={pod}
+                maskRef={maskRef}
+                maskEpoch={maskEpoch}
+                onMaskEdited={onMaskEdited}
+              />
 
-          <PropPlaceTool
-            markers={podWorld.interactables.map((item) => ({
-              id: item.id,
-              foot: item.foot,
-              sprite: item.sprite,
-            }))}
-          />
+              <PropPlaceTool
+                markers={podWorld.interactables.map((item) => ({
+                  id: item.id,
+                  foot: item.foot,
+                  sprite: item.sprite,
+                }))}
+              />
+            </>
+          )}
 
           <PowerHud
             visible={flags.gridOnline && phase === 'play' && !flags.escaped}

@@ -1,0 +1,5 @@
+# In-memory lobby rooms — must stay on a single process.
+# replicas > 1 makes Join return "Room not found" when host/joiner land on different pods.
+size: micro
+port: 8080
+replicas: 1

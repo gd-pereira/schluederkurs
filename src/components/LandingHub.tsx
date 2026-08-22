@@ -32,8 +32,23 @@ type LandingHubProps = {
  * Door slam + camera pullback cue in title_intro.mp4 (seconds).
  */
 const INTRO_REVEAL_AT_S = 2.35
-/** Freeze on a still-lit frame — before the dark ending. */
+/** Hold the settled lit wide shot — before the dark ending (~10s total). */
 const INTRO_FREEZE_AT_S = 6.5
+
+function captureVideoFrame(video: HTMLVideoElement): string | null {
+  if (video.videoWidth < 2 || video.videoHeight < 2) return null
+  try {
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return null
+    ctx.drawImage(video, 0, 0)
+    return canvas.toDataURL('image/jpeg', 0.92)
+  } catch {
+    return null
+  }
+}
 
 function MenuItem({
   label,
@@ -221,6 +236,8 @@ export default function LandingHub({
   const [copyFailed, setCopyFailed] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [videoFailed, setVideoFailed] = useState(false)
+  /** Locked still from the intro — menu stays on this, never cuts to room plate. */
+  const [freezePoster, setFreezePoster] = useState<string | null>(null)
   const copiedTimerRef = useRef<number | null>(null)
 
   const artPod: 'a' | 'b' = pod === 'b' ? 'b' : 'a'
@@ -231,21 +248,39 @@ export default function LandingHub({
     const video = videoRef.current
     if (!video || frozenRef.current) return
     frozenRef.current = true
+
     const dur = video.duration
     const target =
       Number.isFinite(dur) && dur > 0
         ? Math.min(INTRO_FREEZE_AT_S, Math.max(0, dur - 0.05))
         : INTRO_FREEZE_AT_S
-    try {
-      video.currentTime = target
-      video.pause()
-    } catch {
+
+    const lockFrame = () => {
       try {
         video.pause()
       } catch {
         /* ignore */
       }
+      const poster = captureVideoFrame(video)
+      if (poster) setFreezePoster(poster)
     }
+
+    if (Math.abs(video.currentTime - target) > 0.05) {
+      const onSeeked = () => {
+        video.removeEventListener('seeked', onSeeked)
+        lockFrame()
+      }
+      video.addEventListener('seeked', onSeeked)
+      try {
+        video.currentTime = target
+      } catch {
+        video.removeEventListener('seeked', onSeeked)
+        lockFrame()
+      }
+      return
+    }
+
+    lockFrame()
   }, [])
 
   const runReveal = useCallback(() => {
@@ -316,10 +351,11 @@ export default function LandingHub({
     }
   }, [])
 
-  // Autoplay intro; fall back if blocked / missing
+  // Autoplay intro; if blocked, park on freeze frame (do not swap to room plate)
   useEffect(() => {
     if (mode !== 'pick' || menuOpen) return
     if (prefersReducedMotion()) {
+      freezeVideo()
       runReveal()
       return
     }
@@ -332,11 +368,11 @@ export default function LandingHub({
     const play = video.play()
     if (play && typeof play.catch === 'function') {
       play.catch(() => {
-        setVideoFailed(true)
+        freezeVideo()
         runReveal()
       })
     }
-  }, [mode, menuOpen, videoFailed, runReveal])
+  }, [mode, menuOpen, videoFailed, runReveal, freezeVideo])
 
   // If player is already past pick (host/join/solo), ensure menu visible
   useEffect(() => {
@@ -490,10 +526,13 @@ export default function LandingHub({
             transform: showMenu ? undefined : 'scale(1.28) translateX(4%)',
           }}
         >
-          {!videoFailed ? (
+          {/* Intro stays mounted; once frozen we show that exact frame so the menu never cuts to a different still. */}
+          {!videoFailed && (
             <video
               ref={videoRef}
-              className="h-full w-full object-cover object-center"
+              className={`h-full w-full object-cover object-center ${
+                freezePoster ? 'invisible absolute inset-0' : ''
+              }`}
               src={titleIntroUrl()}
               muted
               playsInline
@@ -508,13 +547,21 @@ export default function LandingHub({
                 runReveal()
               }}
             />
-          ) : (
+          )}
+          {freezePoster ? (
+            <img
+              src={freezePoster}
+              alt=""
+              className="h-full w-full object-cover object-center"
+              draggable={false}
+            />
+          ) : videoFailed ? (
             <img
               src={roomPlateUrl(artPod)}
               alt=""
               className="h-full w-full object-cover object-[42%_48%] contrast-110"
             />
-          )}
+          ) : null}
         </div>
         <div
           ref={washRef}

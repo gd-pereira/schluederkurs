@@ -36,7 +36,8 @@ export const PROP_ASSET: Partial<Record<string, string>> = {
 
 export const MODAL_ASSET = {
   wall: 'modal_grime_wall',
-  vase: 'modal_vase_1',
+  vase: 'modal_vase',
+  vase_shards: 'modal_vase_shards',
   keypad: 'modal_keypad',
 } as const
 

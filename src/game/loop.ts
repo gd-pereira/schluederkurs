@@ -151,12 +151,8 @@ export function startGameLoop(options: LoopOptions): GameLoop {
     const key = e.key.toLowerCase()
 
     if (key === 'l') {
-      if (onToggleDebugDark) {
-        onToggleDebugDark()
-      } else {
-        controls.darkMode = !controls.darkMode
-        writeDarkMode()
-      }
+      if (!onToggleDebugDark) return
+      onToggleDebugDark()
       return
     }
 

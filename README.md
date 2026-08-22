@@ -86,7 +86,16 @@ Scores: `GET/POST http://localhost:8080/api/highscores` (in-memory on the Node s
 
 ## Deploy (deplo.io)
 
-- Build outputs to `dist/`
-- Runtime: `Procfile` → `npm start` → `node server/index.mjs`
-- Ensure Cockpit **Sub Path** is empty (repo root)
-- Build env: `BP_INCLUDE_NODEJS_RUNTIME=true` (optional: `BP_STATIC_WEBROOT=dist`)
+This app is a **Node web process** (static `dist/` + WebSocket). Do **not** set
+`BP_STATIC_WEBROOT` — that would serve files via nginx and kill multiplayer.
+
+- Cockpit **Sub Path**: empty (repo root)
+- Build env: `NODE_ENV=production` (buildpack runs `npm install` + `npm run build`)
+- Optional: `BP_INCLUDE_NODEJS_RUNTIME=true` if the runtime is missing Node
+- Start: `Procfile` → `web: npm start` → `node server/index.mjs` (uses `PORT`)
+- `engines.node` is `>=20` in `package.json`
+- **`.deploio.yaml`**: `replicas: 1` and `port: 8080` (required — lobby rooms are in-memory; `replicas > 1` → Join shows “Room not found”)
+- Do **not** set `VITE_WS_URL` / `VITE_API_URL` on deplo (same-origin `wss://` is correct)
+
+After deploy, open the app URL in **two** browsers and use Start Game / Join Lobby.
+If Join fails with “Room not found”, check Cockpit replicas is `1`, then have the host Start Game again (fresh code).
