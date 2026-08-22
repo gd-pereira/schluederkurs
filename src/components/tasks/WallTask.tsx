@@ -28,11 +28,10 @@ export default function WallTask({
           <OptionalAssetImg src={modalAssetUrl('wall')} alt="" />
         </FacilityArt>
         <FacilityCopy>
-          Under the grime: even slots only. Odds live somewhere you can&apos;t
-          see.
+          Under the grime: even slots only. Odds are on the other side.
         </FacilityCopy>
         <FacilityCode>{CODE_CLUE_EVENS}</FacilityCode>
-        <FacilityHint>Esc to close — tell your partner</FacilityHint>
+        <FacilityHint>Esc to close. Tell your partner.</FacilityHint>
       </FacilityBody>
     )
   }
@@ -44,8 +43,8 @@ export default function WallTask({
       </FacilityArt>
       <FacilityCopy>
         {hasRag
-          ? 'Grime hides a partial sequence. Wipe it — you won’t get the whole code here.'
-          : 'Panel caked in grime. Need a rag before anything legible shows.'}
+          ? "Grime hides part of a code. Wipe it. You won't get all four digits here."
+          : 'Panel is caked in grime. Need a rag first.'}
       </FacilityCopy>
       <FacilityBtn tone="metal" onClick={onComplete} disabled={!hasRag}>
         Wipe panel

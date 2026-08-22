@@ -5,7 +5,6 @@ import {
   postHighscore,
   type HighscoreEntry,
 } from '../game/highscores'
-import { hintFor } from '../game/hints'
 import { FacilityBtn } from './FacilityUi'
 
 type EscapeOverlayProps = {
@@ -47,10 +46,8 @@ export default function EscapeOverlay({
           <h2 className="facility-panel__title mt-1 justify-self-center text-[2rem]">
             You escaped
           </h2>
-          <p className="mt-3 text-sm text-amber-200/90">{hintFor('a', 'escaped')}</p>
-          <p className="mt-2 text-sm text-neutral-400">
-            Congrats. The facility expected incompetence and got… marginally
-            less of it. Don&apos;t get used to success.
+          <p className="mt-3 text-sm text-neutral-400">
+            Clear. Time is on the clock if you want to save it.
           </p>
           <p className="mt-6 font-mono text-4xl font-bold tracking-wide text-teal-300">
             {formatted}

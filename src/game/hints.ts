@@ -17,34 +17,35 @@ export type HintId =
 /** Incomplete facility PA — never names the other pod’s next prop */
 const HINTS_A: Record<HintId, string | null> = {
   gridOnline:
-    'Grid shared 100%. Heavy devices steal free power — lights die for both of you.',
-  codeKnown: 'Don’t lose those shards.',
-  fuseLoot: 'Fuse bay needs 70% free. If partner’s keypad is open, make them yield.',
-  escaped: "You're out. Try not to trip on the way.",
-  syncLost: 'Tone dropped. Hold again.',
+    'Grid is shared. Heavy devices eat free power and kill the lights for both of you.',
+  codeKnown: "Don't lose those shards.",
+  fuseLoot:
+    'Fuse needs 70% free. If their keypad is open, make them close it.',
+  escaped: "You're out.",
+  syncLost: 'Sync dropped. Hold again.',
   lightsOut: 'Lights out. Flashlight only.',
-  wallWiped: 'Partner cleared something. Check what’s on the pedestal.',
-  lightsDimmed: 'Free power collapsed — lights dead until the grid recovers.',
-  lightsRestored: 'Lights back. Free power climbed again.',
-  partnerDrawing: 'Partner just hogged the grid. You’re in the dark.',
-  waitingPartnerLever: 'Your lever is down. Waiting on the other pod…',
-  keypadFail: 'Grid stuttered. Partner mangled an input.',
+  wallWiped: 'Partner wiped something. Check the pedestal.',
+  lightsDimmed: 'Free power tanked. Lights stay dead until it recovers.',
+  lightsRestored: 'Lights are back.',
+  partnerDrawing: 'Partner took grid power. You are in the dark.',
+  waitingPartnerLever: 'Your lever is down. Waiting on the other pod.',
+  keypadFail: 'Grid stuttered. Partner botched an input.',
 }
 
 const HINTS_B: Record<HintId, string | null> = {
   gridOnline:
-    'Grid shared 100%. Your keypad eats 80% while open — partner goes dark.',
-  codeKnown: 'Painting circuit armed. It wants four digits.',
+    'Grid is shared. Keypad takes 80% while open. Partner goes dark.',
+  codeKnown: 'Keypad wants four digits.',
   fuseLoot: null,
-  escaped: "You're out. Try not to trip on the way.",
-  syncLost: 'Partner slipped. Reset the hold.',
+  escaped: "You're out.",
+  syncLost: 'Partner let go. Start the hold again.',
   lightsOut: 'Lights out. Flashlight only.',
-  wallWiped: 'You wiped an order, not a full code.',
-  lightsDimmed: 'Free power collapsed — lights dead until the grid recovers.',
-  lightsRestored: 'Lights back. Free power climbed again.',
-  partnerDrawing: 'Partner just hogged the grid. You’re in the dark.',
-  waitingPartnerLever: 'Your lever is down. Waiting on the other pod…',
-  keypadFail: 'Wrong input. Grid hiccup — try again when it settles.',
+  wallWiped: 'That was only half the code.',
+  lightsDimmed: 'Free power tanked. Lights stay dead until it recovers.',
+  lightsRestored: 'Lights are back.',
+  partnerDrawing: 'Partner took grid power. You are in the dark.',
+  waitingPartnerLever: 'Your lever is down. Waiting on the other pod.',
+  keypadFail: 'Wrong code. Wait for the fault to clear, then try again.',
 }
 
 export const HINT_DURATION_MS: Record<HintId, number> = {

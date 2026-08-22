@@ -223,7 +223,7 @@ wss.on('connection', (ws) => {
           send(ws, {
             type: 'error',
             message:
-              'Room not found — host may have disconnected, or Start Game again',
+              'Room not found. Host may have left, or try Start Game again.',
           })
           return
         }

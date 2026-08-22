@@ -109,8 +109,8 @@ export default function KeypadTask({
     <FacilityBody>
       <FacilityCopy>
         Painting circuit. Open panel reserves{' '}
-        <strong>{KEYPAD_RESERVE}%</strong> of the shared grid — partner lights
-        die; fuse bay stays locked until you finish or yield.
+        <strong>{KEYPAD_RESERVE}%</strong> of the shared grid. Partner lights
+        die, and the fuse bay stays locked until you finish or close this.
       </FacilityCopy>
 
       <FacilityCallout tone={lightsOn ? 'amber' : 'fault'}>

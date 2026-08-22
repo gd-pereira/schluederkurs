@@ -12,7 +12,7 @@ export default function LockerTask({ onComplete }: LockerTaskProps) {
   return (
     <FacilityBody>
       <FacilityCopy>
-        Locker latch just clicked. Something useful is waiting inside.
+        Locker clicked open. Grab what&apos;s inside.
       </FacilityCopy>
       <FacilityBtn tone="teal" onClick={onComplete}>
         Open locker

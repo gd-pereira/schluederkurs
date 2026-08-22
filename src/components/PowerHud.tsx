@@ -65,7 +65,7 @@ export default function PowerHud({
 
       <div
         className="flex h-3 overflow-hidden border border-neutral-700 bg-neutral-950"
-        title="One shared 100% — both pods draw from this"
+        title="Shared 100%. Both pods draw from this"
       >
         {you > 0 && (
           <div
@@ -123,7 +123,7 @@ export default function PowerHud({
       </p>
       <p className="mt-1 text-[10px] leading-snug text-neutral-500">
         Lights need ≥{LIGHT_ON_ABOVE}% free (die below {LIGHT_OFF_BELOW}%).
-        Keypad {KEYPAD_RESERVE}% · Fuse {FUSE_RESERVE}% — can’t run both.
+        Keypad {KEYPAD_RESERVE}% and fuse {FUSE_RESERVE}% can&apos;t run together.
       </p>
     </div>
   )
@@ -160,25 +160,25 @@ function describeStatus({
   partnerDevice: string | null
 }): string {
   if (fault > 0) {
-    return 'Fault spike — wrong keypad input. Grid browning out.'
+    return 'Fault spike from a bad keypad input. Grid is browning out.'
   }
   if (partner >= KEYPAD_RESERVE) {
-    return `Partner’s ${partnerDevice ?? 'device'} is eating the grid. Your lights stay dead until they finish or yield.`
+    return `Partner's ${partnerDevice ?? 'device'} is eating the grid. Lights stay dead until they finish or close it.`
   }
   if (you >= KEYPAD_RESERVE) {
-    return `Your ${youDevice ?? 'device'} is hogging power — partner is in the dark. Finish or close.`
+    return `Your ${youDevice ?? 'device'} is hogging power. Partner is in the dark. Finish or close.`
   }
   if (partner >= FUSE_RESERVE) {
-    return `Partner reserved ${partner}% for ${partnerDevice ?? 'fuse'}. Free is ${free}% — wait or talk.`
+    return `Partner reserved ${partner}% for ${partnerDevice ?? 'fuse'}. Free is ${free}%. Wait or talk.`
   }
   if (you >= FUSE_RESERVE) {
-    return `You’re holding ${you}% for ${youDevice ?? 'fuse'}. Partner can’t run heavy devices.`
+    return `You're holding ${you}% for ${youDevice ?? 'fuse'}. Partner can't run heavy devices.`
   }
   if (!lightsOn) {
-    return `Only ${free}% free — lights out. Flashlight only until free climbs.`
+    return `Only ${free}% free. Lights out. Flashlight until free climbs.`
   }
   if (free < 50) {
     return `${free}% free. Heavy devices will kill the lights for both pods.`
   }
-  return `${free}% free. Shared — whatever you reserve, partner loses.`
+  return `${free}% free. Shared grid. What you reserve, partner loses.`
 }

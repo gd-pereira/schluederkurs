@@ -30,7 +30,7 @@ export default function BypassTask({
   return (
     <FacilityBody>
       <FacilityCopy>
-        Dual bypass. Both pods must hold — let go and the window resets.
+        Dual bypass. Both pods have to hold. Let go and it resets.
       </FacilityCopy>
 
       <div className="grid grid-cols-2 gap-2 text-xs uppercase tracking-[0.14em]">
@@ -74,8 +74,8 @@ export default function BypassTask({
             ? pct < 40
               ? 'Tone rising…'
               : pct < 80
-                ? 'Tone climbing — hold!'
-                : 'Almost — don’t let go!'
+                ? 'Keep holding.'
+                : "Almost. Don't let go."
             : localHeld
               ? 'Waiting on partner…'
               : 'Hold when your partner is ready.'}
@@ -98,8 +98,8 @@ export default function BypassTask({
       </FacilityBtn>
       <FacilityHint>
         {solo
-          ? 'Press and hold — use Partner sim for the other side'
-          : `Hold ~${GATE_SYNC_MS / 1000}s together — talk it out`}
+          ? 'Hold here. Use Partner sim for the other side.'
+          : `Hold about ${GATE_SYNC_MS / 1000}s together.`}
       </FacilityHint>
     </FacilityBody>
   )

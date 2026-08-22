@@ -12,7 +12,7 @@ export default function LeverTask({ onComplete }: LeverTaskProps) {
   return (
     <FacilityBody>
       <FacilityCopy>
-        Local breaker lever. The grid won’t wake until both pods pull theirs.
+        Local breaker. Grid stays dead until both pods pull theirs.
       </FacilityCopy>
       <FacilityBtn tone="amber" onClick={onComplete}>
         Pull lever

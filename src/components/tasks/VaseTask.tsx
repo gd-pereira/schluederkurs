@@ -33,11 +33,10 @@ export default function VaseTask({
           <OptionalAssetImg src={modalAssetUrl(artKey)} alt="" />
         </FacilityArt>
         <FacilityCopy>
-          Shards on the pedestal. Odd slots only — evens belong to the other
-          pod.
+          Shards on the pedestal. Odd slots only. Evens are on the other side.
         </FacilityCopy>
         <FacilityCode>{CODE_CLUE_ODDS}</FacilityCode>
-        <FacilityHint>Esc to close — tell your partner</FacilityHint>
+        <FacilityHint>Esc to close. Tell your partner.</FacilityHint>
       </FacilityBody>
     )
   }
@@ -49,10 +48,10 @@ export default function VaseTask({
           <OptionalAssetImg src={modalAssetUrl('vase')} alt="" />
         </FacilityArt>
         <FacilityCopy>
-          Sealed ceramic on the pedestal. Needs a wrench — and whatever the
-          other pod was supposed to clear first.
+          Sealed ceramic. Needs a wrench, and whatever the other pod was
+          supposed to clear first.
         </FacilityCopy>
-        <FacilityHint>Locked until wall wipe + wrench</FacilityHint>
+        <FacilityHint>Locked until wall wipe and wrench</FacilityHint>
       </FacilityBody>
     )
   }
@@ -63,7 +62,7 @@ export default function VaseTask({
         <OptionalAssetImg src={modalAssetUrl('vase')} alt="" />
       </FacilityArt>
       <FacilityCopy>
-        Display sealed. Facility insurance is going to love this.
+        Display sealed. Smash it.
       </FacilityCopy>
       <FacilityBtn
         tone="danger"

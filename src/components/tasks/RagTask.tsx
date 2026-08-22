@@ -12,8 +12,7 @@ export default function RagTask({ onComplete }: RagTaskProps) {
   return (
     <FacilityBody>
       <FacilityCopy>
-        Greasy rag on the cart. Useful for wiping something you’d rather not
-        touch barehanded.
+        Greasy rag on the cart. Good for wiping a filthy panel.
       </FacilityCopy>
       <FacilityBtn tone="metal" onClick={onComplete}>
         Take rag

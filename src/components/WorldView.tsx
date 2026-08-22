@@ -293,7 +293,7 @@ export default function WorldView() {
             setPeers(0)
             setLocalReady(false)
             setPeerReady(false)
-            setLobbyStatus('Connection lost — Start Game or Join again')
+            setLobbyStatus('Connection lost. Start or join again.')
           } else {
             breakMatch()
           }
@@ -979,8 +979,8 @@ export default function WorldView() {
                     Partner disconnected
                   </h2>
                   <p className="mt-3 text-sm text-neutral-400">
-                    Match ended. Mid-game reconnect is not supported — return to
-                    the lobby and start again.
+                    Match over. You can&apos;t rejoin mid-run. Head back to the
+                    lobby and start again.
                   </p>
                   <button
                     type="button"

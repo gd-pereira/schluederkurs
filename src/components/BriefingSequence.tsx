@@ -38,10 +38,10 @@ export default function BriefingSequence({ pod, onDone }: BriefingSequenceProps)
 
   const lines = useMemo(
     () => [
-      'Lockdown engaged.',
-      `You are sealed in Pod ${pod.toUpperCase()}.`,
-      'Your partner waits in the other chamber.',
-      'Restore power. Sync. Get out.',
+      'Lockdown.',
+      `Pod ${pod.toUpperCase()}. You're stuck here.`,
+      "Partner's in the other pod.",
+      'Fix the power. Sync the gate. Get out.',
     ],
     [pod],
   )
@@ -148,7 +148,8 @@ export default function BriefingSequence({ pod, onDone }: BriefingSequenceProps)
       className="briefing-seq fixed inset-0 z-[20000] flex items-center justify-center bg-black"
       style={
         {
-          '--font-brief': "'Audiowide', sans-serif",
+          // Match facility HUD — condensed industrial, not logo display
+          '--font-brief': "'Teko', sans-serif",
         } as CSSProperties
       }
       onClick={finish}
@@ -161,7 +162,7 @@ export default function BriefingSequence({ pod, onDone }: BriefingSequenceProps)
         {lines.map((line) => (
           <p
             key={line}
-            className="brief-line absolute inset-x-8 top-1/2 -translate-y-1/2 font-[family-name:var(--font-brief)] text-[clamp(1.35rem,4vw,2.65rem)] font-normal uppercase leading-[1.35] tracking-[0.14em] text-neutral-100"
+            className="brief-line absolute inset-x-8 top-1/2 -translate-y-1/2 font-[family-name:var(--font-brief)] text-[clamp(1.75rem,5vw,3.25rem)] font-semibold uppercase leading-[1.2] tracking-[0.1em] text-neutral-100"
             style={{
               textShadow: '0 0 28px rgba(251, 191, 36, 0.18)',
             }}
@@ -171,7 +172,7 @@ export default function BriefingSequence({ pod, onDone }: BriefingSequenceProps)
         ))}
         {/* Reserve vertical space so absolute lines stay centered */}
         <p
-          className="invisible font-[family-name:var(--font-brief)] text-[clamp(1.35rem,4vw,2.65rem)] font-normal uppercase leading-[1.35] tracking-[0.14em]"
+          className="invisible font-[family-name:var(--font-brief)] text-[clamp(1.75rem,5vw,3.25rem)] font-semibold uppercase leading-[1.2] tracking-[0.1em]"
           aria-hidden
         >
           {lines.reduce((a, b) => (a.length >= b.length ? a : b))}

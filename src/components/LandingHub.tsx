@@ -629,7 +629,7 @@ export default function LandingHub({
           {mode === 'solo' && (
             <div className="mt-8">
               <p className="title-reveal mb-4 max-w-xs text-sm text-neutral-400">
-                Pick a chamber. Partner sim covers the other pod after lockdown.
+                Pick a pod. The other side runs on partner sim.
               </p>
               <nav className="flex flex-col gap-1" aria-label="Solo pod">
                 <MenuItem
@@ -683,7 +683,7 @@ export default function LandingHub({
           {(mode === 'host' || (mode === 'join' && roomCode)) && (
             <div className="mt-6">
               <p className="title-reveal text-[10px] uppercase tracking-[0.35em] text-neutral-500">
-                Waiting bay
+                Lobby
               </p>
               {roomCode ? (
                 <>
@@ -700,7 +700,7 @@ export default function LandingHub({
                 </>
               ) : (
                 <p className="title-reveal mt-4 text-sm text-neutral-400">
-                  Opening chamber…
+                  Connecting…
                 </p>
               )}
 

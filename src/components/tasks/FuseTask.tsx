@@ -55,11 +55,11 @@ export default function FuseTask({
           </p>
           <p className="mt-1 font-semibold text-red-100">
             {partnerReserve >= 80
-              ? 'Partner’s keypad is open — they must close or yield before you can install.'
+              ? "Partner's keypad is open. They need to close it before you can install."
               : `Need ${FUSE_RESERVE - Math.round(freePower)}% more free. Talk to your partner.`}
           </p>
         </FacilityCallout>
-        <FacilityHint>Close and wait — reopen to retry reserve</FacilityHint>
+        <FacilityHint>Close this, wait, then open again to retry.</FacilityHint>
       </FacilityBody>
     )
   }
@@ -67,8 +67,8 @@ export default function FuseTask({
   return (
     <FacilityBody>
       <FacilityCopy>
-        Fuse bay online. Install holds <strong>{FUSE_RESERVE}%</strong> until
-        you finish — partner’s lights die while you work.
+        Fuse bay ready. Install holds <strong>{FUSE_RESERVE}%</strong> until
+        you finish. Partner lights die while you work.
       </FacilityCopy>
       <FacilityCallout tone={lightsOn ? 'amber' : 'fault'}>
         <p>
