@@ -41,7 +41,6 @@ export default function BriefingSequence({ pod, onDone }: BriefingSequenceProps)
       'Lockdown engaged.',
       `You are sealed in Pod ${pod.toUpperCase()}.`,
       'Your partner waits in the other chamber.',
-      'Same dying grid. Same gate.',
       'Restore power. Sync. Get out.',
     ],
     [pod],

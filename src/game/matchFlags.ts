@@ -221,6 +221,8 @@ export function withBypass(
 }
 
 export function withEscape(flags: MatchFlags, at: number): MatchFlags {
+  // First escape wins — later peer stamps must not overwrite (clock / sync skew).
+  if (flags.escaped) return flags
   return {
     ...flags,
     escaped: true,
