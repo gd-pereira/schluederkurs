@@ -209,14 +209,27 @@ export function activeInteractables(
     locker: Interactable
     fuse: Interactable
     bypass: Interactable
+    wall: Interactable
+    keypad: Interactable
   },
+  pod: 'a' | 'b' = 'a',
 ): Interactable[] {
   if (!flags.gridOnline) {
+    if (pod === 'b') return flags.leverB ? [] : [props.lever]
     return flags.leverA ? [] : [props.lever]
   }
   if (flags.escaped) return []
 
   const list: Interactable[] = []
+
+  if (pod === 'b') {
+    if (!flags.wallWiped) list.push(props.wall)
+    if (flags.codeKnown && !flags.keypadDone) list.push(props.keypad)
+    if (flags.fuseInstalled && !flags.escaped) list.push(props.bypass)
+    return list
+  }
+
+  // Pod A (and solo)
   if (!flags.hasWrench) list.push(props.wrench)
   if (flags.hasWrench && flags.wallWiped && !flags.vaseSmashed) {
     list.push(props.vase)

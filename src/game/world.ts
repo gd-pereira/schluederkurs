@@ -171,6 +171,52 @@ export function createBypassProp(): Interactable {
   }
 }
 
+/** Grimy wall (Pod B wipe) */
+export function createWallProp(): Interactable {
+  const footW = 80
+  const footH = 28
+  const spriteW = 100
+  const spriteH = 140
+  const footX = 200
+  const footY = 450
+
+  return {
+    id: 'wall',
+    taskId: 'wall',
+    foot: { x: footX, y: footY, w: footW, h: footH },
+    sprite: {
+      x: footX + (footW - spriteW) / 2,
+      y: footY + footH - spriteH,
+      w: spriteW,
+      h: spriteH,
+    },
+    color: '#5a5248',
+  }
+}
+
+/** Painting / keypad (Pod B) */
+export function createKeypadProp(): Interactable {
+  const footW = 40
+  const footH = 28
+  const spriteW = 72
+  const spriteH = 90
+  const footX = 1000
+  const footY = 480
+
+  return {
+    id: 'keypad',
+    taskId: 'keypad',
+    foot: { x: footX, y: footY, w: footW, h: footH },
+    sprite: {
+      x: footX + (footW - spriteW) / 2,
+      y: footY + footH - spriteH,
+      w: spriteW,
+      h: spriteH,
+    },
+    color: '#4a5568',
+  }
+}
+
 export function createWorldSolids(props: readonly Prop[]): AABB[] {
   return [...createWalls(), ...props.map((p) => p.foot)]
 }

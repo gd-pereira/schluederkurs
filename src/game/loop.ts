@@ -28,6 +28,8 @@ export type LoopOptions = {
   interactablesRef: { current: readonly Interactable[] }
   /** Optional: L toggles debug dark via React instead of flipping darkMode directly */
   onToggleDebugDark?: () => void
+  /** Foot center pose for multiplayer ghost (~called every frame; throttle outside) */
+  onPose?: (x: number, y: number) => void
   controls: LoopControls
   onRequestTask: (taskId: string) => void
 }
@@ -52,12 +54,14 @@ export function startGameLoop(options: LoopOptions): GameLoop {
     controls,
     onRequestTask,
     onToggleDebugDark,
+    onPose,
   } = options
 
   const keys = new Set<string>()
   let nearestTaskId: string | null = null
   let rafId = 0
   let lastTime = performance.now()
+  let lastPoseSent = 0
 
   const foot: AABB = {
     x: PLAYER_START_X,
@@ -182,6 +186,10 @@ export function startGameLoop(options: LoopOptions): GameLoop {
 
     writeDarkMode()
     writePlayerDom()
+    if (onPose && now - lastPoseSent > 100) {
+      lastPoseSent = now
+      onPose(foot.x + foot.w / 2, foot.y + foot.h / 2)
+    }
     rafId = requestAnimationFrame(tick)
   }
 
