@@ -10,6 +10,12 @@ type PartnerSimProps = {
   partnerKeypadOpen: boolean
   onPartnerKeypadOpen: () => void
   onPartnerKeypadFinish: () => void
+  partnerReserve: number
+  onPartnerYield: () => void
+  fuseInstalled: boolean
+  partnerBypassHeld: boolean
+  onPartnerBypassHold: (held: boolean) => void
+  escaped: boolean
 }
 
 export default function PartnerSim({
@@ -24,8 +30,14 @@ export default function PartnerSim({
   partnerKeypadOpen,
   onPartnerKeypadOpen,
   onPartnerKeypadFinish,
+  partnerReserve,
+  onPartnerYield,
+  fuseInstalled,
+  partnerBypassHeld,
+  onPartnerBypassHold,
+  escaped,
 }: PartnerSimProps) {
-  if (!enabled) return null
+  if (!enabled || escaped) return null
 
   return (
     <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
@@ -71,6 +83,34 @@ export default function PartnerSim({
         <span className="rounded border border-neutral-700 px-3 py-1.5 text-xs text-neutral-500">
           Keypad done
         </span>
+      )}
+      <button
+        type="button"
+        disabled={partnerReserve <= 0}
+        onClick={onPartnerYield}
+        className="rounded border border-neutral-600 bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-neutral-200 hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        Partner yields power
+      </button>
+      {fuseInstalled && (
+        <button
+          type="button"
+          className={`select-none rounded border px-3 py-1.5 text-xs font-semibold ${
+            partnerBypassHeld
+              ? 'border-amber-500 bg-amber-900/50 text-amber-100'
+              : 'border-neutral-600 bg-neutral-900 text-neutral-200 hover:bg-neutral-800'
+          }`}
+          onPointerDown={(e) => {
+            e.preventDefault()
+            ;(e.target as HTMLButtonElement).setPointerCapture(e.pointerId)
+            onPartnerBypassHold(true)
+          }}
+          onPointerUp={() => onPartnerBypassHold(false)}
+          onPointerCancel={() => onPartnerBypassHold(false)}
+          onLostPointerCapture={() => onPartnerBypassHold(false)}
+        >
+          {partnerBypassHeld ? 'Partner holding bypass…' : 'Hold partner bypass'}
+        </button>
       )}
     </div>
   )

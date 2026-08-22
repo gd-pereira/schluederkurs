@@ -3,6 +3,8 @@ import { footBottom } from '../game/collision'
 import {
   BLACKOUT_HOLD_MS,
   FLASHLIGHT_RADIUS,
+  FUSE_RESERVE,
+  GATE_SYNC_MS,
   PLAYER_SPRITE_H,
   PLAYER_SPRITE_W,
   WALL_THICKNESS,
@@ -15,10 +17,18 @@ import {
   createFlags,
   effectiveDark,
   freePower,
+  freePowerWithoutReserveA,
+  withBypass,
+  withClearFuseReserve,
+  withEscape,
   withFuse,
+  withFuseInstalled,
+  withFuseReserve,
   withKeypadDone,
   withKeypadReserve,
   withLeverPulled,
+  withPartnerYield,
+  withStartedAt,
   withVaseSmashed,
   withWallWiped,
   withWrench,
@@ -26,6 +36,8 @@ import {
 } from '../game/matchFlags'
 import type { Interactable, LoopControls, MatchPhase } from '../game/types'
 import {
+  createBypassProp,
+  createFusePanelProp,
   createLeverProp,
   createLockerProp,
   createPlaceholderCrate,
@@ -33,11 +45,14 @@ import {
   createWorldSolids,
   createWrenchProp,
 } from '../game/world'
+import EscapeOverlay from './EscapeOverlay'
 import GateSlamOverlay from './GateSlamOverlay'
 import LobbyOverlay from './LobbyOverlay'
 import PartnerSim from './PartnerSim'
 import PowerHud from './PowerHud'
 import TaskModal from './TaskModal'
+import BypassTask from './tasks/BypassTask'
+import FuseTask from './tasks/FuseTask'
 import LeverTask from './tasks/LeverTask'
 import LockerTask from './tasks/LockerTask'
 import VaseTask from './tasks/VaseTask'
@@ -48,14 +63,32 @@ const lever = createLeverProp()
 const wrench = createWrenchProp()
 const vase = createVaseProp()
 const locker = createLockerProp()
-const solids = createWorldSolids([crate, lever, wrench, vase, locker])
-const interactProps = { lever, wrench, vase, locker }
+const fusePanel = createFusePanelProp()
+const bypass = createBypassProp()
+const solids = createWorldSolids([
+  crate,
+  lever,
+  wrench,
+  vase,
+  locker,
+  fusePanel,
+  bypass,
+])
+const interactProps = {
+  lever,
+  wrench,
+  vase,
+  locker,
+  fuse: fusePanel,
+  bypass,
+}
 
 export default function WorldView() {
   const [phase, setPhase] = useState<MatchPhase>('lobby')
   const [openTaskId, setOpenTaskId] = useState<string | null>(null)
   const [aiToast, setAiToast] = useState<string | null>(null)
   const [flags, setFlags] = useState<MatchFlags>(() => createFlags())
+  const [syncProgress, setSyncProgress] = useState(0)
 
   const worldRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<HTMLDivElement>(null)
@@ -77,6 +110,9 @@ export default function WorldView() {
   const sawGridToast = useRef(false)
   const sawCodeToast = useRef(false)
   const sawFuseToast = useRef(false)
+  const sawEscapeToast = useRef(false)
+  const syncStartedAtRef = useRef<number | null>(null)
+  const wasSyncingRef = useRef(false)
 
   phaseRef.current = phase
   openTaskRef.current = openTaskId
@@ -86,7 +122,7 @@ export default function WorldView() {
     phase === 'blackout' || phase === 'play' || lockdownStartedRef.current
 
   controlsRef.current.phase = phase
-  controlsRef.current.inputLocked = openTaskId !== null
+  controlsRef.current.inputLocked = openTaskId !== null || flags.escaped
   controlsRef.current.darkMode = effectiveDark(flags, lockdownStarted)
   interactablesRef.current = activeInteractables(flags, interactProps)
 
@@ -99,11 +135,14 @@ export default function WorldView() {
   const requestTask = useCallback((taskId: string) => {
     if (phaseRef.current !== 'play') return
     if (openTaskRef.current !== null) return
+    if (flagsRef.current.escaped) return
     const f = flagsRef.current
     if (taskId === 'lever' && f.leverA) return
     if (taskId === 'wrench' && f.hasWrench) return
     if (taskId === 'vase' && f.vaseSmashed) return
     if (taskId === 'locker' && f.hasFuse) return
+    if (taskId === 'fuse' && f.fuseInstalled) return
+    if (taskId === 'bypass' && f.escaped) return
     setOpenTaskId(taskId)
   }, [])
 
@@ -150,6 +189,53 @@ export default function WorldView() {
     return () => window.clearTimeout(id)
   }, [flags.hasFuse])
 
+  useEffect(() => {
+    if (!flags.escaped || sawEscapeToast.current) return
+    sawEscapeToast.current = true
+    setAiToast('Blast gate open. Try not to trip on the way out.')
+    setOpenTaskId(null)
+  }, [flags.escaped])
+
+  // Dual bypass sync timer
+  useEffect(() => {
+    if (flags.escaped || !flags.fuseInstalled) {
+      syncStartedAtRef.current = null
+      setSyncProgress(0)
+      wasSyncingRef.current = false
+      return
+    }
+
+    const both = flags.bypassA && flags.bypassB
+    if (!both) {
+      if (wasSyncingRef.current) {
+        setAiToast('Sync lost.')
+        window.setTimeout(() => setAiToast(null), 1500)
+      }
+      wasSyncingRef.current = false
+      syncStartedAtRef.current = null
+      setSyncProgress(0)
+      return
+    }
+
+    wasSyncingRef.current = true
+    if (syncStartedAtRef.current === null) {
+      syncStartedAtRef.current = performance.now()
+    }
+
+    const id = window.setInterval(() => {
+      const start = syncStartedAtRef.current
+      if (start === null) return
+      if (!flagsRef.current.bypassA || !flagsRef.current.bypassB) return
+      const elapsed = performance.now() - start
+      setSyncProgress(Math.min(1, elapsed / GATE_SYNC_MS))
+      if (elapsed >= GATE_SYNC_MS && !flagsRef.current.escaped) {
+        applyFlags((prev) => withEscape(prev, Date.now()))
+      }
+    }, 50)
+
+    return () => window.clearInterval(id)
+  }, [flags.bypassA, flags.bypassB, flags.fuseInstalled, flags.escaped, applyFlags])
+
   const completeLocalLever = useCallback(() => {
     applyFlags((prev) => withLeverPulled(prev, 'a'))
     setOpenTaskId(null)
@@ -171,6 +257,24 @@ export default function WorldView() {
     applyFlags((prev) => withKeypadDone(prev))
   }, [applyFlags])
 
+  const completePartnerYield = useCallback(() => {
+    applyFlags((prev) => withPartnerYield(prev))
+  }, [applyFlags])
+
+  const setPartnerBypass = useCallback(
+    (held: boolean) => {
+      applyFlags((prev) => withBypass(prev, 'b', held))
+    },
+    [applyFlags],
+  )
+
+  const setLocalBypass = useCallback(
+    (held: boolean) => {
+      applyFlags((prev) => withBypass(prev, 'a', held))
+    },
+    [applyFlags],
+  )
+
   const completeWrench = useCallback(() => {
     applyFlags((prev) => withWrench(prev))
     setOpenTaskId(null)
@@ -182,6 +286,21 @@ export default function WorldView() {
 
   const completeLocker = useCallback(() => {
     applyFlags((prev) => withFuse(prev))
+    setOpenTaskId(null)
+  }, [applyFlags])
+
+  const reserveFuse = useCallback(() => {
+    applyFlags((prev) => withFuseReserve(prev))
+  }, [applyFlags])
+
+  const clearFuseReserve = useCallback(() => {
+    applyFlags((prev) =>
+      prev.fuseInstalled ? prev : withClearFuseReserve(prev),
+    )
+  }, [applyFlags])
+
+  const installFuse = useCallback(() => {
+    applyFlags((prev) => withFuseInstalled(prev))
     setOpenTaskId(null)
   }, [applyFlags])
 
@@ -209,9 +328,10 @@ export default function WorldView() {
     const id = window.setTimeout(() => {
       setPhase('play')
       setAiToast(null)
+      applyFlags((prev) => withStartedAt(prev, Date.now()))
     }, BLACKOUT_HOLD_MS)
     return () => window.clearTimeout(id)
-  }, [phase])
+  }, [phase, applyFlags])
 
   useEffect(() => {
     const worldEl = worldRef.current
@@ -240,6 +360,11 @@ export default function WorldView() {
   }, [requestTask, toggleDebugDark])
 
   const free = freePower(flags)
+  const canReserveFuse = freePowerWithoutReserveA(flags) >= FUSE_RESERVE
+  const escapeTimeMs =
+    flags.escapedAt !== null && flags.startedAt !== null
+      ? flags.escapedAt - flags.startedAt
+      : 0
 
   return (
     <div>
@@ -365,6 +490,36 @@ export default function WorldView() {
           />
 
           <div
+            className="absolute left-0 top-0 will-change-transform"
+            style={{
+              width: fusePanel.sprite.w,
+              height: fusePanel.sprite.h,
+              transform: `translate(${fusePanel.sprite.x}px, ${fusePanel.sprite.y}px)`,
+              backgroundColor: flags.fuseInstalled ? '#5c3d0e' : fusePanel.color,
+              boxShadow: 'inset 0 0 0 2px #3a2208',
+              borderRadius: 4,
+              opacity: flags.fuseInstalled ? 0.55 : flags.hasFuse ? 1 : 0.35,
+              zIndex: Math.floor(footBottom(fusePanel.foot)),
+            }}
+            aria-label="Fuse panel"
+          />
+
+          <div
+            className="absolute left-0 top-0 will-change-transform"
+            style={{
+              width: bypass.sprite.w,
+              height: bypass.sprite.h,
+              transform: `translate(${bypass.sprite.x}px, ${bypass.sprite.y}px)`,
+              backgroundColor: flags.escaped ? '#0f2940' : bypass.color,
+              boxShadow: 'inset 0 0 0 2px #0a1a2e',
+              borderRadius: 6,
+              opacity: flags.fuseInstalled ? 1 : 0.35,
+              zIndex: Math.floor(footBottom(bypass.foot)),
+            }}
+            aria-label="Bypass console"
+          />
+
+          <div
             ref={playerRef}
             className="absolute left-0 top-0 will-change-transform"
             style={{
@@ -389,13 +544,14 @@ export default function WorldView() {
           <PowerHud
             visible={flags.gridOnline}
             free={free}
+            reserveYou={flags.reserveA}
             reservePartner={flags.reserveB}
           />
 
           {phase === 'lobby' && <LobbyOverlay onReady={handleReady} />}
           {phase === 'gateSlam' && <GateSlamOverlay onDone={handleSlamDone} />}
 
-          {aiToast && (
+          {aiToast && !flags.escaped && (
             <p className="pointer-events-none absolute bottom-8 left-1/2 z-[10070] -translate-x-1/2 rounded bg-black/80 px-4 py-2 text-sm text-amber-200">
               {aiToast}
             </p>
@@ -425,13 +581,35 @@ export default function WorldView() {
               <LockerTask onComplete={completeLocker} />
             </TaskModal>
           )}
-          {openTaskId !== null &&
-            openTaskId !== 'lever' &&
-            openTaskId !== 'wrench' &&
-            openTaskId !== 'vase' &&
-            openTaskId !== 'locker' && (
-              <TaskModal title="Task" onClose={closeTask} />
-            )}
+          {openTaskId === 'fuse' && (
+            <TaskModal title="Fuse bay" onClose={closeTask}>
+              <FuseTask
+                canReserve={canReserveFuse}
+                reserved={flags.reserveA >= FUSE_RESERVE}
+                onReserve={reserveFuse}
+                onInstall={installFuse}
+                onClearReserve={clearFuseReserve}
+              />
+            </TaskModal>
+          )}
+          {openTaskId === 'bypass' && (
+            <TaskModal
+              title="Gate bypass"
+              onClose={() => {
+                setLocalBypass(false)
+                closeTask()
+              }}
+            >
+              <BypassTask
+                localHeld={flags.bypassA}
+                partnerHeld={flags.bypassB}
+                syncProgress={syncProgress}
+                onHoldChange={setLocalBypass}
+              />
+            </TaskModal>
+          )}
+
+          {flags.escaped && <EscapeOverlay timeMs={escapeTimeMs} />}
         </div>
       </div>
 
@@ -447,6 +625,12 @@ export default function WorldView() {
         partnerKeypadOpen={flags.reserveB > 0 && !flags.keypadDone}
         onPartnerKeypadOpen={completePartnerKeypadOpen}
         onPartnerKeypadFinish={completePartnerKeypadFinish}
+        partnerReserve={flags.reserveB}
+        onPartnerYield={completePartnerYield}
+        fuseInstalled={flags.fuseInstalled}
+        partnerBypassHeld={flags.bypassB}
+        onPartnerBypassHold={setPartnerBypass}
+        escaped={flags.escaped}
       />
     </div>
   )

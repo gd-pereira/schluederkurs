@@ -125,6 +125,52 @@ export function createLockerProp(): Interactable {
   }
 }
 
+/** Fuse / breaker panel — near lever */
+export function createFusePanelProp(): Interactable {
+  const footW = 48
+  const footH = 32
+  const spriteW = 60
+  const spriteH = 100
+  const footX = 480
+  const footY = 250
+
+  return {
+    id: 'fuse',
+    taskId: 'fuse',
+    foot: { x: footX, y: footY, w: footW, h: footH },
+    sprite: {
+      x: footX + (footW - spriteW) / 2,
+      y: footY + footH - spriteH,
+      w: spriteW,
+      h: spriteH,
+    },
+    color: '#b45309',
+  }
+}
+
+/** Gate bypass console — bottom center-ish */
+export function createBypassProp(): Interactable {
+  const footW = 70
+  const footH = 40
+  const spriteW = 90
+  const spriteH = 80
+  const footX = 700
+  const footY = 560
+
+  return {
+    id: 'bypass',
+    taskId: 'bypass',
+    foot: { x: footX, y: footY, w: footW, h: footH },
+    sprite: {
+      x: footX + (footW - spriteW) / 2,
+      y: footY + footH - spriteH,
+      w: spriteW,
+      h: spriteH,
+    },
+    color: '#1e3a5f',
+  }
+}
+
 export function createWorldSolids(props: readonly Prop[]): AABB[] {
   return [...createWalls(), ...props.map((p) => p.foot)]
 }

@@ -6,7 +6,7 @@ export default function App() {
       <header className="text-center">
         <h1 className="text-xl font-semibold tracking-tight">Incompetent Chambers</h1>
         <p className="mt-1 text-sm text-neutral-400">
-          Ready · WASD · E · Partner sim (lever / wipe / keypad) · Esc · L debug
+          Ready · WASD · E · Partner sim · Fuse 70% · Bypass sync · Esc · L
         </p>
       </header>
       <div className="max-w-full overflow-auto">
