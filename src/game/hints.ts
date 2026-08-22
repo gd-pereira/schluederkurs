@@ -19,8 +19,7 @@ const HINTS_A: Record<HintId, string | null> = {
   gridOnline:
     'Grid is shared. Heavy devices eat free power and kill the lights for both of you.',
   codeKnown: "Don't lose those shards.",
-  fuseLoot:
-    'Fuse needs 70% free. If their keypad is open, make them close it.',
+  fuseLoot: 'Fuse acquired. Install it at the fuse bay when free power is high enough.',
   escaped: "You're out.",
   syncLost: 'Sync dropped. Hold again.',
   lightsOut: 'Lights out. Flashlight only.',
@@ -51,7 +50,7 @@ const HINTS_B: Record<HintId, string | null> = {
 export const HINT_DURATION_MS: Record<HintId, number> = {
   gridOnline: 3500,
   codeKnown: 2800,
-  fuseLoot: 3200,
+  fuseLoot: 3800,
   escaped: 0,
   syncLost: 1800,
   lightsOut: 2200,

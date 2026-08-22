@@ -33,10 +33,9 @@ export default function VaseTask({
           <OptionalAssetImg src={modalAssetUrl(artKey)} alt="" />
         </FacilityArt>
         <FacilityCopy>
-          Shards on the pedestal. Odd slots only. Evens are on the other side.
+          What could this mean?
         </FacilityCopy>
         <FacilityCode>{CODE_CLUE_ODDS}</FacilityCode>
-        <FacilityHint>Esc to close. Tell your partner.</FacilityHint>
       </FacilityBody>
     )
   }
