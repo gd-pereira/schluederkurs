@@ -8,11 +8,16 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.join(__dirname, '..')
 const DIST = path.join(ROOT, 'dist')
 const PORT = Number(process.env.PORT) || 8080
+const MAX_SCORES = 20
 
 /** @typedef {{ ws: import('ws').WebSocket, pod: 'a' | 'b', ready: boolean }} Client */
+/** @typedef {{ timeMs: number, at: number, code?: string }} ScoreEntry */
 
 /** @type {Map<string, { clients: Client[] }>} */
 const rooms = new Map()
+
+/** @type {ScoreEntry[]} */
+let highscores = []
 
 function send(ws, msg) {
   if (ws.readyState === 1) ws.send(JSON.stringify(msg))
@@ -31,6 +36,34 @@ function makeCode() {
     code += alphabet[Math.floor(Math.random() * alphabet.length)]
   }
   return code
+}
+
+function setCors(req, res) {
+  const origin = req.headers.origin || ''
+  if (
+    origin.startsWith('http://localhost:') ||
+    origin.startsWith('http://127.0.0.1:')
+  ) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  }
+}
+
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = []
+    req.on('data', (c) => chunks.push(c))
+    req.on('end', () => {
+      try {
+        const raw = Buffer.concat(chunks).toString('utf8')
+        resolve(raw ? JSON.parse(raw) : {})
+      } catch (err) {
+        reject(err)
+      }
+    })
+    req.on('error', reject)
+  })
 }
 
 function contentType(filePath) {
@@ -58,7 +91,6 @@ function serveStatic(req, res) {
 
   fs.readFile(filePath, (err, data) => {
     if (err) {
-      // SPA fallback
       fs.readFile(path.join(DIST, 'index.html'), (err2, html) => {
         if (err2) {
           res.writeHead(404)
@@ -75,7 +107,57 @@ function serveStatic(req, res) {
   })
 }
 
-const server = http.createServer((req, res) => {
+async function handleApi(req, res) {
+  setCors(req, res)
+  const urlPath = (req.url || '').split('?')[0]
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204)
+    res.end()
+    return true
+  }
+
+  if (urlPath === '/api/highscores' && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify(highscores))
+    return true
+  }
+
+  if (urlPath === '/api/highscores' && req.method === 'POST') {
+    try {
+      const body = await readBody(req)
+      const timeMs = Number(body.timeMs)
+      if (!Number.isFinite(timeMs) || timeMs < 0 || timeMs > 24 * 60 * 60 * 1000) {
+        res.writeHead(400, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Invalid timeMs' }))
+        return true
+      }
+      /** @type {ScoreEntry} */
+      const entry = {
+        timeMs: Math.floor(timeMs),
+        at: Date.now(),
+      }
+      if (typeof body.code === 'string' && body.code.trim()) {
+        entry.code = body.code.trim().toUpperCase().slice(0, 8)
+      }
+      highscores = [...highscores, entry]
+        .sort((a, b) => a.timeMs - b.timeMs)
+        .slice(0, MAX_SCORES)
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify(highscores))
+      return true
+    } catch {
+      res.writeHead(400, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ error: 'Bad JSON' }))
+      return true
+    }
+  }
+
+  return false
+}
+
+const server = http.createServer(async (req, res) => {
+  if (await handleApi(req, res)) return
   if (req.method === 'GET' || req.method === 'HEAD') {
     serveStatic(req, res)
     return

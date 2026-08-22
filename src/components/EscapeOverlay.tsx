@@ -1,20 +1,38 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
+  fetchHighscores,
   formatEscapeTime,
-  loadHighscores,
-  saveHighscore,
+  postHighscore,
   type HighscoreEntry,
 } from '../game/highscores'
 
 type EscapeOverlayProps = {
   timeMs: number
+  roomCode?: string | null
 }
 
-export default function EscapeOverlay({ timeMs }: EscapeOverlayProps) {
-  const [scores, setScores] = useState<HighscoreEntry[]>(() => loadHighscores())
+export default function EscapeOverlay({
+  timeMs,
+  roomCode,
+}: EscapeOverlayProps) {
+  const [scores, setScores] = useState<HighscoreEntry[]>([])
+  const [source, setSource] = useState<'server' | 'local'>('local')
   const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   const formatted = useMemo(() => formatEscapeTime(timeMs), [timeMs])
+
+  useEffect(() => {
+    let cancelled = false
+    void fetchHighscores().then((result) => {
+      if (cancelled) return
+      setScores(result.scores)
+      setSource(result.source)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   return (
     <div className="absolute inset-0 z-[10200] flex flex-col items-center justify-center bg-black/80 px-6">
@@ -34,29 +52,37 @@ export default function EscapeOverlay({ timeMs }: EscapeOverlayProps) {
 
       <button
         type="button"
-        disabled={saved}
+        disabled={saved || saving}
         onClick={() => {
-          setScores(saveHighscore(timeMs))
-          setSaved(true)
+          setSaving(true)
+          void postHighscore(timeMs, roomCode).then((result) => {
+            setScores(result.scores)
+            setSource(result.source)
+            setSaved(true)
+            setSaving(false)
+          })
         }}
         className="mt-6 rounded-md border-2 border-teal-500/70 bg-teal-500/15 px-6 py-2.5 text-sm font-bold uppercase tracking-wider text-teal-200 hover:bg-teal-500/25 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {saved ? 'Score saved' : 'Save score'}
+        {saved ? 'Score saved' : saving ? 'Saving…' : 'Save score'}
       </button>
 
       {scores.length > 0 && (
         <div className="mt-8 w-full max-w-xs">
           <p className="mb-2 text-center text-xs font-semibold uppercase tracking-wider text-neutral-500">
-            Local best
+            {source === 'server' ? 'Server best' : 'Local best'}
           </p>
           <ol className="space-y-1 text-sm text-neutral-300">
-            {scores.map((entry, i) => (
+            {scores.slice(0, 5).map((entry, i) => (
               <li
-                key={`${entry.at}-${entry.timeMs}`}
-                className="flex justify-between rounded bg-white/5 px-3 py-1.5 font-mono"
+                key={`${entry.at}-${entry.timeMs}-${i}`}
+                className="flex justify-between gap-2 rounded bg-white/5 px-3 py-1.5 font-mono"
               >
                 <span className="text-neutral-500">#{i + 1}</span>
                 <span>{formatEscapeTime(entry.timeMs)}</span>
+                {entry.code && (
+                  <span className="text-neutral-600">{entry.code}</span>
+                )}
               </li>
             ))}
           </ol>

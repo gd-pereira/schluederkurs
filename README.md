@@ -67,7 +67,9 @@ npm install
 | `npm start` | Same as `server` (deplo.io) |
 | `npm run lint` | Lint |
 
-Optional: `VITE_WS_URL=ws://localhost:8080` (already the default when you’re on Vite’s port).
+Optional: `VITE_WS_URL=ws://localhost:8080` / `VITE_API_URL=http://localhost:8080` (defaults when on Vite’s port).
+
+Scores: `GET/POST http://localhost:8080/api/highscores` (in-memory on the Node server; escape overlay uses this, falls back to localStorage).
 
 ## Deploy (deplo.io)
 

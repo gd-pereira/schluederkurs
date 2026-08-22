@@ -835,7 +835,9 @@ export default function WorldView() {
             </TaskModal>
           )}
 
-          {flags.escaped && <EscapeOverlay timeMs={escapeTimeMs} />}
+          {flags.escaped && (
+            <EscapeOverlay timeMs={escapeTimeMs} roomCode={roomCode} />
+          )}
         </div>
       </div>
 
