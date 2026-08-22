@@ -37,6 +37,7 @@ export default function LobbyOverlay({
 }: LobbyOverlayProps) {
   const [joinCode, setJoinCode] = useState('')
   const [copied, setCopied] = useState(false)
+  const [copyFailed, setCopyFailed] = useState(false)
   const copiedTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
@@ -51,6 +52,7 @@ export default function LobbyOverlay({
     if (!roomCode) return
     try {
       await navigator.clipboard.writeText(roomCode)
+      setCopyFailed(false)
       setCopied(true)
       if (copiedTimerRef.current !== null) {
         window.clearTimeout(copiedTimerRef.current)
@@ -58,6 +60,11 @@ export default function LobbyOverlay({
       copiedTimerRef.current = window.setTimeout(() => setCopied(false), 1500)
     } catch {
       setCopied(false)
+      setCopyFailed(true)
+      if (copiedTimerRef.current !== null) {
+        window.clearTimeout(copiedTimerRef.current)
+      }
+      copiedTimerRef.current = window.setTimeout(() => setCopyFailed(false), 1500)
     }
   }, [roomCode])
 
@@ -129,7 +136,13 @@ export default function LobbyOverlay({
           <input
             value={joinCode}
             onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && joinCode.trim().length >= 4) {
+                onJoinSubmit(joinCode.trim())
+              }
+            }}
             maxLength={4}
+            autoFocus
             className="mt-4 w-40 rounded border border-neutral-600 bg-neutral-900 px-3 py-2 text-center font-mono text-lg tracking-widest text-neutral-100"
             placeholder="ABCD"
           />
@@ -169,7 +182,7 @@ export default function LobbyOverlay({
                 onClick={copyRoomCode}
                 className="mt-3 rounded-md border border-neutral-500 bg-neutral-800/80 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-neutral-200 hover:bg-neutral-700"
               >
-                {copied ? 'Copied' : 'Copy code'}
+                {copyFailed ? 'Copy failed' : copied ? 'Copied' : 'Copy code'}
               </button>
               <p className="mt-2 text-sm text-neutral-400">
                 You are Pod {pod?.toUpperCase() ?? '?'} · Peers {peers}/2

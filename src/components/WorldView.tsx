@@ -18,6 +18,7 @@ import {
   WORLD_H,
   WORLD_W,
 } from '../game/constants'
+import { HINT_DURATION_MS, hintText } from '../game/hints'
 import { startGameLoop } from '../game/loop'
 import {
   activeInteractables,
@@ -27,7 +28,6 @@ import {
   freePowerWithoutReserveA,
   type MatchFlags,
 } from '../game/matchFlags'
-import { HINT_DURATION_MS, hintText } from '../game/hints'
 import type { Interactable, LoopControls, MatchPhase } from '../game/types'
 import { createPodWorld } from '../game/world'
 import {
@@ -70,6 +70,7 @@ export default function WorldView() {
   const [aiToast, setAiToast] = useState<string | null>(null)
   const [flags, setFlags] = useState<MatchFlags>(() => createFlags())
   const [syncProgress, setSyncProgress] = useState(0)
+  const [matchBroken, setMatchBroken] = useState(false)
 
   const [lobbyMode, setLobbyMode] = useState<LobbyMode>(
     forceSolo ? 'solo' : 'pick',
@@ -105,13 +106,18 @@ export default function WorldView() {
   const podRef = useRef(pod)
   const connectionRef = useRef(connectionMode)
   const wsRef = useRef<WsClient | null>(null)
+  const intentionalCloseRef = useRef(false)
   const lockdownStartedRef = useRef(false)
   const sawGridToast = useRef(false)
   const sawCodeToast = useRef(false)
   const sawFuseToast = useRef(false)
-  const sawEscapeToast = useRef(false)
+  const sawWallToast = useRef(false)
+  const sawDimToast = useRef(false)
+  const sawWaitLeverToast = useRef(false)
+  const lightsWereOnRef = useRef(false)
   const syncStartedAtRef = useRef<number | null>(null)
   const wasSyncingRef = useRef(false)
+  const lightsOutClearRef = useRef<number | null>(null)
 
   phaseRef.current = phase
   openTaskRef.current = openTaskId
@@ -123,7 +129,8 @@ export default function WorldView() {
     phase === 'blackout' || phase === 'play' || lockdownStartedRef.current
 
   controlsRef.current.phase = phase
-  controlsRef.current.inputLocked = openTaskId !== null || flags.escaped
+  controlsRef.current.inputLocked =
+    openTaskId !== null || flags.escaped || matchBroken
   controlsRef.current.darkMode = effectiveDark(flags, lockdownStarted)
   interactablesRef.current = activeInteractables(flags, podWorld.byId, pod)
 
@@ -163,8 +170,53 @@ export default function WorldView() {
   )
 
   const closeWs = useCallback(() => {
+    intentionalCloseRef.current = true
     wsRef.current?.close()
     wsRef.current = null
+    window.setTimeout(() => {
+      intentionalCloseRef.current = false
+    }, 0)
+  }, [])
+
+  const resetMatch = useCallback(() => {
+    if (lightsOutClearRef.current !== null) {
+      window.clearTimeout(lightsOutClearRef.current)
+      lightsOutClearRef.current = null
+    }
+    closeWs()
+    setFlags(createFlags())
+    setPhase('lobby')
+    setOpenTaskId(null)
+    setAiToast(null)
+    setSyncProgress(0)
+    setMatchBroken(false)
+    lockdownStartedRef.current = false
+    sawGridToast.current = false
+    sawCodeToast.current = false
+    sawFuseToast.current = false
+    sawWallToast.current = false
+    sawDimToast.current = false
+    sawWaitLeverToast.current = false
+    lightsWereOnRef.current = false
+    syncStartedAtRef.current = null
+    wasSyncingRef.current = false
+    if (worldRef.current) worldRef.current.dataset.dark = '0'
+    controlsRef.current.darkMode = false
+    setLobbyMode(forceSolo ? 'solo' : 'pick')
+    setConnectionMode(forceSolo ? 'solo' : null)
+    setRoomCode(null)
+    setPeers(0)
+    setLocalReady(false)
+    setPeerReady(false)
+    setLobbyStatus(null)
+    setPod('a')
+    if (ghostRef.current) ghostRef.current.style.opacity = '0'
+  }, [closeWs])
+
+  const breakMatch = useCallback(() => {
+    if (phaseRef.current === 'lobby') return
+    setMatchBroken(true)
+    setOpenTaskId(null)
   }, [])
 
   const openConnection = useCallback(
@@ -185,7 +237,11 @@ export default function WorldView() {
           setPeers(p)
           setPeerReady(false)
           setLocalReady(false)
-          setLobbyStatus('Partner left')
+          if (phaseRef.current === 'lobby') {
+            setLobbyStatus('Partner left')
+          } else {
+            breakMatch()
+          }
         },
         onReadyState: ({ pod: p, ready }) => {
           if (p !== podRef.current) setPeerReady(ready)
@@ -202,14 +258,16 @@ export default function WorldView() {
           el.style.zIndex = String(Math.floor(y + PLAYER_FOOT_H / 2))
         },
         onClose: () => {
+          if (intentionalCloseRef.current) return
           if (phaseRef.current === 'lobby') setLobbyStatus('Disconnected')
+          else breakMatch()
         },
       })
       wsRef.current = client
       if (role === 'host') helloHost(client)
       else if (code) helloJoin(client, code)
     },
-    [closeWs, dispatch],
+    [breakMatch, closeWs, dispatch],
   )
 
   const requestTask = useCallback((taskId: string) => {
@@ -267,10 +325,51 @@ export default function WorldView() {
   }, [flags.hasFuse])
 
   useEffect(() => {
-    if (!flags.escaped || sawEscapeToast.current) return
-    sawEscapeToast.current = true
-    setAiToast(hintText('escaped'))
-    setOpenTaskId(null)
+    if (!flags.wallWiped || sawWallToast.current) return
+    sawWallToast.current = true
+    setAiToast(hintText('wallWiped'))
+    const id = window.setTimeout(
+      () => setAiToast(null),
+      HINT_DURATION_MS.wallWiped,
+    )
+    return () => window.clearTimeout(id)
+  }, [flags.wallWiped])
+
+  useEffect(() => {
+    if (flags.lightsOn) lightsWereOnRef.current = true
+    if (
+      !flags.gridOnline ||
+      flags.lightsOn ||
+      !lightsWereOnRef.current ||
+      sawDimToast.current
+    ) {
+      return
+    }
+    sawDimToast.current = true
+    setAiToast(hintText('lightsDimmed'))
+    const id = window.setTimeout(
+      () => setAiToast(null),
+      HINT_DURATION_MS.lightsDimmed,
+    )
+    return () => window.clearTimeout(id)
+  }, [flags.gridOnline, flags.lightsOn])
+
+  useEffect(() => {
+    if (sawWaitLeverToast.current || flags.gridOnline) return
+    const localDone = pod === 'a' ? flags.leverA : flags.leverB
+    const partnerDone = pod === 'a' ? flags.leverB : flags.leverA
+    if (!localDone || partnerDone) return
+    sawWaitLeverToast.current = true
+    setAiToast(hintText('waitingPartnerLever'))
+    const id = window.setTimeout(
+      () => setAiToast(null),
+      HINT_DURATION_MS.waitingPartnerLever,
+    )
+    return () => window.clearTimeout(id)
+  }, [flags.leverA, flags.leverB, flags.gridOnline, pod])
+
+  useEffect(() => {
+    if (flags.escaped) setOpenTaskId(null)
   }, [flags.escaped])
 
   useEffect(() => {
@@ -416,14 +515,24 @@ export default function WorldView() {
     if (worldRef.current) worldRef.current.dataset.dark = '1'
     setPhase('blackout')
     setAiToast(hintText('lightsOut'))
+    if (lightsOutClearRef.current !== null) {
+      window.clearTimeout(lightsOutClearRef.current)
+    }
+    lightsOutClearRef.current = window.setTimeout(() => {
+      setAiToast(null)
+      lightsOutClearRef.current = null
+    }, HINT_DURATION_MS.lightsOut)
   }, [])
 
   useEffect(() => {
     if (phase !== 'blackout') return
     const id = window.setTimeout(() => {
       setPhase('play')
-      setAiToast(null)
-      dispatch({ type: 'startedAt', at: Date.now() })
+      const soloOrHost =
+        connectionRef.current !== 'online' || podRef.current === 'a'
+      if (soloOrHost) {
+        dispatch({ type: 'startedAt', at: Date.now() })
+      }
     }, BLACKOUT_HOLD_MS)
     return () => window.clearTimeout(id)
   }, [phase, dispatch])
@@ -461,19 +570,10 @@ export default function WorldView() {
     flags.escapedAt !== null && flags.startedAt !== null
       ? flags.escapedAt - flags.startedAt
       : 0
-  const showPartnerSim = connectionMode === 'solo' && phase === 'play'
-
-  function resetLobby() {
-    closeWs()
-    setLobbyMode(forceSolo ? 'solo' : 'pick')
-    setConnectionMode(forceSolo ? 'solo' : null)
-    setRoomCode(null)
-    setPeers(0)
-    setLocalReady(false)
-    setPeerReady(false)
-    setLobbyStatus(null)
-    setPod('a')
-  }
+  const showPartnerSim =
+    connectionMode === 'solo' && phase === 'play' && !matchBroken
+  const reserveYou = pod === 'b' ? flags.reserveB : flags.reserveA
+  const reservePartner = pod === 'b' ? flags.reserveA : flags.reserveB
 
   return (
     <div>
@@ -551,7 +651,7 @@ export default function WorldView() {
 
           <div
             ref={promptRef}
-            className="pointer-events-none absolute left-0 top-0 z-[5000] text-sm font-bold tracking-wide text-amber-300 opacity-0 will-change-transform"
+            className="pointer-events-none absolute left-0 top-0 z-[5000] whitespace-nowrap text-sm font-bold tracking-wide text-amber-300 opacity-0 will-change-transform"
             style={{ textShadow: '0 1px 2px #000' }}
             aria-hidden
           />
@@ -561,8 +661,8 @@ export default function WorldView() {
           <PowerHud
             visible={flags.gridOnline}
             free={free}
-            reserveYou={flags.reserveA}
-            reservePartner={flags.reserveB}
+            reserveYou={reserveYou}
+            reservePartner={reservePartner}
           />
 
           {phase === 'lobby' && (
@@ -597,18 +697,18 @@ export default function WorldView() {
                 if (wsRef.current) sendReady(wsRef.current, next)
               }}
               onSoloReady={() => setPhase('gateSlam')}
-              onBack={resetLobby}
+              onBack={resetMatch}
             />
           )}
           {phase === 'gateSlam' && <GateSlamOverlay onDone={handleSlamDone} />}
 
-          {aiToast && !flags.escaped && (
+          {aiToast && !flags.escaped && !matchBroken && (
             <p className="pointer-events-none absolute bottom-8 left-1/2 z-[10070] -translate-x-1/2 rounded bg-black/80 px-4 py-2 text-sm text-amber-200">
               {aiToast}
             </p>
           )}
 
-          {connectionMode === 'online' && phase === 'play' && (
+          {connectionMode === 'online' && phase === 'play' && !matchBroken && (
             <p className="pointer-events-none absolute left-3 top-3 z-[10040] rounded bg-black/70 px-2 py-1 text-xs text-neutral-300">
               Pod {pod.toUpperCase()} · {roomCode}
             </p>
@@ -682,12 +782,36 @@ export default function WorldView() {
                 partnerHeld={pod === 'a' ? flags.bypassB : flags.bypassA}
                 syncProgress={syncProgress}
                 onHoldChange={setLocalBypass}
+                solo={connectionMode === 'solo'}
               />
             </TaskModal>
           )}
 
-          {flags.escaped && (
-            <EscapeOverlay timeMs={escapeTimeMs} roomCode={roomCode} />
+          {matchBroken && (
+            <div className="absolute inset-0 z-[10250] flex flex-col items-center justify-center bg-black/85 px-6">
+              <h2 className="text-2xl font-bold text-neutral-50">
+                Partner disconnected
+              </h2>
+              <p className="mt-2 max-w-sm text-center text-sm text-neutral-400">
+                Match ended. Mid-game reconnect is not supported — return to the
+                lobby and start again.
+              </p>
+              <button
+                type="button"
+                onClick={resetMatch}
+                className="mt-6 rounded-md border-2 border-amber-500/80 bg-amber-500/15 px-8 py-3 text-sm font-bold uppercase tracking-wider text-amber-300 hover:bg-amber-500/25"
+              >
+                Back to lobby
+              </button>
+            </div>
+          )}
+
+          {flags.escaped && !matchBroken && (
+            <EscapeOverlay
+              timeMs={escapeTimeMs}
+              roomCode={roomCode}
+              onPlayAgain={resetMatch}
+            />
           )}
         </div>
       </div>

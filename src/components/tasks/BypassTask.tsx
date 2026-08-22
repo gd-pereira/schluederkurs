@@ -5,6 +5,7 @@ type BypassTaskProps = {
   partnerHeld: boolean
   syncProgress: number
   onHoldChange: (held: boolean) => void
+  solo: boolean
 }
 
 export default function BypassTask({
@@ -12,6 +13,7 @@ export default function BypassTask({
   partnerHeld,
   syncProgress,
   onHoldChange,
+  solo,
 }: BypassTaskProps) {
   const both = localHeld && partnerHeld
   const pct = Math.min(100, Math.round(syncProgress * 100))
@@ -65,7 +67,9 @@ export default function BypassTask({
         {localHeld ? 'Holding bypass…' : 'Hold bypass'}
       </button>
       <p className="mt-2 text-center text-xs text-neutral-500">
-        Press and hold — use Partner sim for the other side
+        {solo
+          ? 'Press and hold — use Partner sim for the other side'
+          : 'Press and hold — your partner must hold their console too'}
       </p>
     </div>
   )

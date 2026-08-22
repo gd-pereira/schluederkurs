@@ -12,6 +12,18 @@ import { footBottom, resolveMove } from './collision'
 import { findNearestInteractable } from './interact'
 import type { AABB, Interactable, LoopControls } from './types'
 
+const PROMPT_LABEL: Record<string, string> = {
+  lever: 'Lever',
+  wrench: 'Wrench',
+  rag: 'Rag',
+  vase: 'Vase',
+  wall: 'Wall',
+  keypad: 'Keypad',
+  locker: 'Locker',
+  fuse: 'Fuse',
+  bypass: 'Bypass',
+}
+
 export type LoopHandles = {
   playerEl: HTMLElement
   worldEl: HTMLElement
@@ -93,7 +105,8 @@ export function startGameLoop(options: LoopOptions): GameLoop {
     nearestTaskId = target.taskId
     const cx = target.sprite.x + target.sprite.w / 2
     const top = target.sprite.y - 28
-    el.textContent = '[E]'
+    const label = PROMPT_LABEL[target.taskId] ?? target.taskId
+    el.textContent = `[E] ${label}`
     el.style.opacity = '1'
     el.style.transform = `translate(${cx}px, ${top}px) translate(-50%, 0)`
   }

@@ -41,6 +41,18 @@ Use the **Vite URL** (`5173`) while developing — it talks to WS on `8080` auto
 
 Tip: use a normal window + an Incognito/Private window so you don’t share the same tab state.
 
+## Demo checklist (judges)
+
+1. `npm run dev:all` → open **two** windows on `http://localhost:5173`
+2. **Create room** / **Join** + Copy code → both **Ready** at `2/2`
+3. **Pod A:** lever → wrench → (wait for wipe) vase `8977` → locker fuse → fuse bay 70% → bypass hold  
+4. **Pod B:** lever → rag → wipe wall → keypad 80% (code from A) → yield if A needs power → bypass hold  
+5. **Solo:** Solo → Ready → use **Solo sim** “Next: …” buttons under the pod in order (lever → wipe → keypad → yield/bypass)
+6. Mid-game partner disconnect ends the match (Back to lobby) — no mid-game reconnect
+7. Escape → **Play again** returns to lobby without refreshing
+
+Friend art: drop skill-named PNGs into `public/assets/` (see `src/game/assets.ts`).
+
 ### Production-like check (after build)
 
 ```bash

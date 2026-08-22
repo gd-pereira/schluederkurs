@@ -29,14 +29,50 @@ export default function KeypadTask({
     setDigits((prev) => (prev.length >= 4 ? prev : prev + d))
   }
 
-  function submit() {
-    if (digits === VASE_CODE) {
+  function clear() {
+    setDigits('')
+    setError(null)
+  }
+
+  function submit(current = digits) {
+    if (current === VASE_CODE) {
       onSuccess()
       return
     }
     setError('Wrong code. Facility is judging you.')
     setDigits('')
   }
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key >= '0' && e.key <= '9') {
+        e.preventDefault()
+        press(e.key)
+        return
+      }
+      if (e.key === 'Backspace') {
+        e.preventDefault()
+        setError(null)
+        setDigits((prev) => prev.slice(0, -1))
+        return
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        setDigits((prev) => {
+          submit(prev)
+          return prev
+        })
+        return
+      }
+      if (e.key === 'Escape') return
+      if (e.key.toLowerCase() === 'c' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault()
+        clear()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onSuccess])
 
   return (
     <div>
@@ -65,10 +101,8 @@ export default function KeypadTask({
               type="button"
               className="rounded border-2 border-neutral-700 bg-neutral-100 py-2 text-sm font-bold hover:bg-white"
               onClick={() => {
-                if (key === 'C') {
-                  setDigits('')
-                  setError(null)
-                } else if (key === 'OK') submit()
+                if (key === 'C') clear()
+                else if (key === 'OK') submit()
                 else press(key)
               }}
             >
