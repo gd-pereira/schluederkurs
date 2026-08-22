@@ -6,7 +6,6 @@ import {
   useState,
   type CSSProperties,
 } from 'react'
-import { footBottom } from '../game/collision'
 import {
   BLACKOUT_HOLD_MS,
   FLASHLIGHT_RADIUS,
@@ -28,8 +27,9 @@ import {
   freePowerWithoutReserveA,
   type MatchFlags,
 } from '../game/matchFlags'
+import { HINT_DURATION_MS, hintText } from '../game/hints'
 import type { Interactable, LoopControls, MatchPhase } from '../game/types'
-import { createPodWorld, type PodWorld } from '../game/world'
+import { createPodWorld } from '../game/world'
 import {
   applyMatchEvent,
   isSoloMode,
@@ -49,6 +49,7 @@ import EscapeOverlay from './EscapeOverlay'
 import GateSlamOverlay from './GateSlamOverlay'
 import LobbyOverlay, { type LobbyMode } from './LobbyOverlay'
 import PartnerSim from './PartnerSim'
+import { renderPodProps } from './PodPropSprites'
 import PowerHud from './PowerHud'
 import TaskModal from './TaskModal'
 import BypassTask from './tasks/BypassTask'
@@ -62,79 +63,6 @@ import WallTask from './tasks/WallTask'
 import WrenchTask from './tasks/WrenchTask'
 
 const forceSolo = isSoloMode()
-
-function propVisualState(
-  id: string,
-  flags: MatchFlags,
-  pod: PodId,
-): { opacity: number; backgroundColor?: string } {
-  switch (id) {
-    case 'lever':
-      return {
-        opacity: (pod === 'b' ? flags.leverB : flags.leverA) ? 0.45 : 1,
-      }
-    case 'wrench':
-      return { opacity: flags.hasWrench ? 0 : 1 }
-    case 'rag':
-      return { opacity: flags.hasRag ? 0 : 1 }
-    case 'vase':
-      return {
-        opacity: flags.vaseSmashed ? 0.5 : 1,
-        backgroundColor: flags.vaseSmashed ? '#3a2848' : undefined,
-      }
-    case 'locker':
-      return {
-        opacity: flags.hasFuse ? 0.55 : 1,
-        backgroundColor: flags.hasFuse ? '#2a3a32' : undefined,
-      }
-    case 'fuse':
-      return {
-        opacity: flags.fuseInstalled ? 0.55 : flags.hasFuse ? 1 : 0.45,
-        backgroundColor: flags.fuseInstalled ? '#5c3d0e' : undefined,
-      }
-    case 'bypass':
-      return {
-        opacity: flags.fuseInstalled ? 1 : 0.35,
-        backgroundColor: flags.escaped ? '#0f2940' : undefined,
-      }
-    case 'wall':
-      return { opacity: flags.wallWiped ? 0.4 : 1 }
-    case 'keypad':
-      return { opacity: flags.keypadDone ? 0.45 : 1 }
-    default:
-      return { opacity: 1 }
-  }
-}
-
-function renderPodProps(world: PodWorld, flags: MatchFlags, pod: PodId) {
-  return world.props.map((prop) => {
-    const visual = propVisualState(prop.id, flags, pod)
-    return (
-      <div
-        key={prop.id}
-        className="absolute left-0 top-0 will-change-transform"
-        style={{
-          width: prop.sprite.w,
-          height: prop.sprite.h,
-          transform: `translate(${prop.sprite.x}px, ${prop.sprite.y}px)`,
-          backgroundColor: visual.backgroundColor ?? prop.color,
-          boxShadow: 'inset 0 0 0 2px #1a1208',
-          borderRadius: 4,
-          opacity: visual.opacity,
-          zIndex: Math.floor(footBottom(prop.foot)),
-        }}
-        aria-hidden={prop.id !== 'lever' && prop.id !== 'bypass'}
-        aria-label={
-          prop.id === 'lever'
-            ? 'Lever'
-            : prop.id === 'bypass'
-              ? 'Bypass console'
-              : undefined
-        }
-      />
-    )
-  })
-}
 
 export default function WorldView() {
   const [phase, setPhase] = useState<MatchPhase>('lobby')
@@ -308,31 +236,40 @@ export default function WorldView() {
   useEffect(() => {
     if (!flags.gridOnline || sawGridToast.current) return
     sawGridToast.current = true
-    setAiToast("Grid online. Don't waste it.")
-    const id = window.setTimeout(() => setAiToast(null), 2000)
+    setAiToast(hintText('gridOnline'))
+    const id = window.setTimeout(
+      () => setAiToast(null),
+      HINT_DURATION_MS.gridOnline,
+    )
     return () => window.clearTimeout(id)
   }, [flags.gridOnline])
 
   useEffect(() => {
     if (!flags.codeKnown || sawCodeToast.current) return
     sawCodeToast.current = true
-    setAiToast('Remember that. The other pod will need it.')
-    const id = window.setTimeout(() => setAiToast(null), 2500)
+    setAiToast(hintText('codeKnown'))
+    const id = window.setTimeout(
+      () => setAiToast(null),
+      HINT_DURATION_MS.codeKnown,
+    )
     return () => window.clearTimeout(id)
   }, [flags.codeKnown])
 
   useEffect(() => {
     if (!flags.hasFuse || sawFuseToast.current) return
     sawFuseToast.current = true
-    setAiToast("Fuse acquired. Don't drop it.")
-    const id = window.setTimeout(() => setAiToast(null), 2500)
+    setAiToast(hintText('fuseLoot'))
+    const id = window.setTimeout(
+      () => setAiToast(null),
+      HINT_DURATION_MS.fuseLoot,
+    )
     return () => window.clearTimeout(id)
   }, [flags.hasFuse])
 
   useEffect(() => {
     if (!flags.escaped || sawEscapeToast.current) return
     sawEscapeToast.current = true
-    setAiToast('Blast gate open. Try not to trip on the way out.')
+    setAiToast(hintText('escaped'))
     setOpenTaskId(null)
   }, [flags.escaped])
 
@@ -347,8 +284,8 @@ export default function WorldView() {
     const both = flags.bypassA && flags.bypassB
     if (!both) {
       if (wasSyncingRef.current) {
-        setAiToast('Sync lost.')
-        window.setTimeout(() => setAiToast(null), 1500)
+        setAiToast(hintText('syncLost'))
+        window.setTimeout(() => setAiToast(null), HINT_DURATION_MS.syncLost)
       }
       wasSyncingRef.current = false
       syncStartedAtRef.current = null
@@ -478,7 +415,7 @@ export default function WorldView() {
     controlsRef.current.darkMode = true
     if (worldRef.current) worldRef.current.dataset.dark = '1'
     setPhase('blackout')
-    setAiToast('Lights out. Try not to trip.')
+    setAiToast(hintText('lightsOut'))
   }, [])
 
   useEffect(() => {

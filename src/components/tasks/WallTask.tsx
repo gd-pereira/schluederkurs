@@ -1,3 +1,6 @@
+import { modalAssetUrl } from '../../game/assets'
+import OptionalAssetImg from '../OptionalAssetImg'
+
 type WallTaskProps = {
   hasRag: boolean
   onComplete: () => void
@@ -6,6 +9,11 @@ type WallTaskProps = {
 export default function WallTask({ hasRag, onComplete }: WallTaskProps) {
   return (
     <div>
+      <OptionalAssetImg
+        src={modalAssetUrl('wall')}
+        alt=""
+        className="mb-4 mx-auto max-h-40 w-auto object-contain"
+      />
       <p className="text-sm leading-relaxed text-neutral-700">
         {hasRag
           ? 'Grime spells out a threat: SMASH THE VASE. Wipe it clean so the other pod can read it… or just trust the facility.'

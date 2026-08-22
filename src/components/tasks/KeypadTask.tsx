@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
+import { modalAssetUrl } from '../../game/assets'
 import { VASE_CODE } from '../../game/matchFlags'
+import OptionalAssetImg from '../OptionalAssetImg'
 
 type KeypadTaskProps = {
   reserved: boolean
@@ -38,6 +40,11 @@ export default function KeypadTask({
 
   return (
     <div>
+      <OptionalAssetImg
+        src={modalAssetUrl('keypad')}
+        alt=""
+        className="mb-4 mx-auto max-h-36 w-auto object-contain"
+      />
       <p className="text-sm text-neutral-700">
         Painting keypad. Draws 80% while open — don&apos;t leave your partner in
         the dark forever.

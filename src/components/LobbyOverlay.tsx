@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 export type LobbyMode = 'pick' | 'solo' | 'host' | 'join'
 
@@ -36,6 +36,30 @@ export default function LobbyOverlay({
   onBack,
 }: LobbyOverlayProps) {
   const [joinCode, setJoinCode] = useState('')
+  const [copied, setCopied] = useState(false)
+  const copiedTimerRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimerRef.current !== null) {
+        window.clearTimeout(copiedTimerRef.current)
+      }
+    }
+  }, [])
+
+  const copyRoomCode = useCallback(async () => {
+    if (!roomCode) return
+    try {
+      await navigator.clipboard.writeText(roomCode)
+      setCopied(true)
+      if (copiedTimerRef.current !== null) {
+        window.clearTimeout(copiedTimerRef.current)
+      }
+      copiedTimerRef.current = window.setTimeout(() => setCopied(false), 1500)
+    } catch {
+      setCopied(false)
+    }
+  }, [roomCode])
 
   return (
     <div className="absolute inset-0 z-[10050] flex flex-col items-center justify-center bg-black/70 px-6">
@@ -140,6 +164,13 @@ export default function LobbyOverlay({
           )}
           {roomCode && (
             <>
+              <button
+                type="button"
+                onClick={copyRoomCode}
+                className="mt-3 rounded-md border border-neutral-500 bg-neutral-800/80 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-neutral-200 hover:bg-neutral-700"
+              >
+                {copied ? 'Copied' : 'Copy code'}
+              </button>
               <p className="mt-2 text-sm text-neutral-400">
                 You are Pod {pod?.toUpperCase() ?? '?'} · Peers {peers}/2
               </p>

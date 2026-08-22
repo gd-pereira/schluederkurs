@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { modalAssetUrl } from '../../game/assets'
 import { VASE_CODE } from '../../game/matchFlags'
+import OptionalAssetImg from '../OptionalAssetImg'
 
 type VaseTaskProps = {
   alreadySmashed: boolean
@@ -18,6 +20,11 @@ export default function VaseTask({
   if (showCode) {
     return (
       <div className="text-center">
+        <OptionalAssetImg
+          src={modalAssetUrl('vase')}
+          alt=""
+          className="mb-4 mx-auto max-h-40 w-auto object-contain"
+        />
         <p className="text-sm text-neutral-600">Shards everywhere. The code is:</p>
         <p className="mt-3 font-mono text-4xl font-bold tracking-[0.2em] text-neutral-900">
           {VASE_CODE}
@@ -29,15 +36,27 @@ export default function VaseTask({
 
   if (!canSmash) {
     return (
-      <p className="text-sm leading-relaxed text-neutral-700">
-        Fancy vase. You need a wrench — and the other pod still has to wipe that wall
-        clue first.
-      </p>
+      <div>
+        <OptionalAssetImg
+          src={modalAssetUrl('vase')}
+          alt=""
+          className="mb-4 mx-auto max-h-40 w-auto object-contain"
+        />
+        <p className="text-sm leading-relaxed text-neutral-700">
+          Fancy vase. You need a wrench — and the other pod still has to wipe that
+          wall clue first.
+        </p>
+      </div>
     )
   }
 
   return (
     <div>
+      <OptionalAssetImg
+        src={modalAssetUrl('vase')}
+        alt=""
+        className="mb-4 mx-auto max-h-40 w-auto object-contain"
+      />
       <p className="text-sm leading-relaxed text-neutral-700">
         The placard said smash it. Facility insurance is going to love this.
       </p>
