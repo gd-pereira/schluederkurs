@@ -49,9 +49,9 @@ export function modalAssetUrl(key: keyof typeof MODAL_ASSET): string {
   return assetUrl(MODAL_ASSET[key])
 }
 
-/** 4-frame horizontal walk sheet (idle + 3 stride poses) */
-export function playerAssetUrl(): string {
-  return assetUrl('player')
+/** 4-frame horizontal walk sheet (idle + 3 stride poses) per pod */
+export function playerAssetUrl(pod: 'a' | 'b' = 'a'): string {
+  return assetUrl(pod === 'a' ? 'player_a' : 'player_b')
 }
 
 export const PLAYER_WALK_FRAMES = 4

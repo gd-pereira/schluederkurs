@@ -63,6 +63,7 @@ import PowerStrainBanner from './PowerStrainBanner'
 import PropPlaceTool from './PropPlaceTool'
 import RoomPlateLayers from './RoomPlateLayers'
 import TaskModal from './TaskModal'
+import TypewriterText from './TypewriterText'
 import BypassTask from './tasks/BypassTask'
 import FuseTask from './tasks/FuseTask'
 import KeypadTask from './tasks/KeypadTask'
@@ -133,7 +134,8 @@ export default function WorldView() {
   const prevPartnerReserveRef = useRef(0)
   const syncStartedAtRef = useRef<number | null>(null)
   const wasSyncingRef = useRef(false)
-  const lightsOutClearRef = useRef<number | null>(null)
+  const toastClearRef = useRef<number | null>(null)
+  const toastHoldMsRef = useRef(0)
 
   phaseRef.current = phase
   openTaskRef.current = openTaskId
@@ -195,9 +197,9 @@ export default function WorldView() {
   }, [])
 
   const resetMatch = useCallback(() => {
-    if (lightsOutClearRef.current !== null) {
-      window.clearTimeout(lightsOutClearRef.current)
-      lightsOutClearRef.current = null
+    if (toastClearRef.current !== null) {
+      window.clearTimeout(toastClearRef.current)
+      toastClearRef.current = null
     }
     closeWs()
     setFlags(createFlags())
@@ -343,10 +345,24 @@ export default function WorldView() {
   const showToast = useCallback((id: HintId) => {
     const line = hintFor(podRef.current, id)
     if (!line) return
+    if (toastClearRef.current !== null) {
+      window.clearTimeout(toastClearRef.current)
+      toastClearRef.current = null
+    }
+    toastHoldMsRef.current = HINT_DURATION_MS[id]
     setAiToast(line)
-    const ms = HINT_DURATION_MS[id]
-    if (ms <= 0) return
-    window.setTimeout(() => setAiToast(null), ms)
+  }, [])
+
+  const onToastTyped = useCallback(() => {
+    const hold = toastHoldMsRef.current
+    if (hold <= 0) return
+    if (toastClearRef.current !== null) {
+      window.clearTimeout(toastClearRef.current)
+    }
+    toastClearRef.current = window.setTimeout(() => {
+      setAiToast(null)
+      toastClearRef.current = null
+    }, hold)
   }, [])
 
   useEffect(() => {
@@ -621,18 +637,8 @@ export default function WorldView() {
     controlsRef.current.darkMode = true
     if (worldRef.current) worldRef.current.dataset.dark = '1'
     setPhase('blackout')
-    const line = hintFor(podRef.current, 'lightsOut')
-    if (line) {
-      setAiToast(line)
-      if (lightsOutClearRef.current !== null) {
-        window.clearTimeout(lightsOutClearRef.current)
-      }
-      lightsOutClearRef.current = window.setTimeout(() => {
-        setAiToast(null)
-        lightsOutClearRef.current = null
-      }, HINT_DURATION_MS.lightsOut)
-    }
-  }, [])
+    showToast('lightsOut')
+  }, [showToast])
 
   useEffect(() => {
     if (phase !== 'blackout') return
@@ -773,7 +779,7 @@ export default function WorldView() {
               {
                 width: PLAYER_SPRITE_W,
                 height: PLAYER_SPRITE_H,
-                '--player-sheet': `url(${playerAssetUrl()})`,
+                '--player-sheet': `url(${playerAssetUrl(pod === 'a' ? 'b' : 'a')})`,
               } as CSSProperties
             }
             data-frame="0"
@@ -788,7 +794,7 @@ export default function WorldView() {
               {
                 width: PLAYER_SPRITE_W,
                 height: PLAYER_SPRITE_H,
-                '--player-sheet': `url(${playerAssetUrl()})`,
+                '--player-sheet': `url(${playerAssetUrl(pod)})`,
               } as CSSProperties
             }
             data-frame="0"
@@ -887,7 +893,7 @@ export default function WorldView() {
 
           {aiToast && !flags.escaped && !matchBroken && (
             <p className="pointer-events-none absolute bottom-8 left-1/2 z-[10070] -translate-x-1/2 rounded bg-black/80 px-4 py-2 text-sm text-amber-200">
-              {aiToast}
+              <TypewriterText text={aiToast} onComplete={onToastTyped} />
             </p>
           )}
 

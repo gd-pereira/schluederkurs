@@ -131,8 +131,80 @@ export function findClearFootSpawn(
 
 
 /**
+ * How far (px) to auto-nudge perpendicular when a step hits a tiny mask bump.
+ * Lets the foot glide past 1–few-pixel snags instead of locking in place.
+ */
+const CORNER_SLIDE_PX = 10
+
+/**
+ * If a single axis step is blocked, try small perpendicular offsets so the
+ * foot can slip past painted jaggies / single-pixel hooks.
+ */
+function tryCornerSlide(
+  foot: AABB,
+  step: number,
+  axis: 'x' | 'y',
+  mask: CollisionMask,
+): AABB | null {
+  for (let dist = 1; dist <= CORNER_SLIDE_PX; dist++) {
+    for (const sign of [1, -1] as const) {
+      const nudged: AABB = { ...foot }
+      if (axis === 'x') nudged.y += sign * dist
+      else nudged.x += sign * dist
+
+      if (footBlocked(mask, nudged)) continue
+
+      const advanced: AABB = { ...nudged }
+      if (axis === 'x') advanced.x += step
+      else advanced.y += step
+
+      if (!footBlocked(mask, advanced)) return advanced
+    }
+  }
+  return null
+}
+
+/** Advance one axis with substeps + optional corner-slide assist. */
+function moveAxis(
+  foot: AABB,
+  delta: number,
+  axis: 'x' | 'y',
+  mask: CollisionMask,
+  allowSlide: boolean,
+): AABB {
+  if (delta === 0) return foot
+
+  const next: AABB = { ...foot }
+  const steps = Math.max(1, Math.ceil(Math.abs(delta)))
+  const step = delta / steps
+
+  for (let i = 0; i < steps; i++) {
+    const beforeX = next.x
+    const beforeY = next.y
+    if (axis === 'x') next.x += step
+    else next.y += step
+
+    if (!footBlocked(mask, next)) continue
+
+    next.x = beforeX
+    next.y = beforeY
+    if (!allowSlide) break
+
+    const slid = tryCornerSlide(next, step, axis, mask)
+    if (!slid) break
+    next.x = slid.x
+    next.y = slid.y
+  }
+
+  return next
+}
+
+/**
  * Move foot by dx/dy against a painted mask.
- * Resolves X then Y with substeps so the player can slide along edges.
+ * Resolves X then Y with substeps and corner-slide so small mask bumps
+ * don't pin the player. Corner-slide is disabled when both axes have input
+ * so pressing into a wall while strafing can't inject extra sideways travel
+ * (the "surf speed-up"). Path length is also capped to the intended move.
  */
 export function resolveMoveMask(
   foot: AABB,
@@ -140,30 +212,26 @@ export function resolveMoveMask(
   dy: number,
   mask: CollisionMask,
 ): AABB {
-  const next: AABB = { ...foot }
+  // Only corner-slide on near-pure axis moves. Diagonal / into-wall + strafe
+  // uses plain slide-along-wall so assists can't stack into a speed boost.
+  const slideX = Math.abs(dy) < 1e-6
+  const slideY = Math.abs(dx) < 1e-6
 
-  if (dx !== 0) {
-    const steps = Math.max(1, Math.ceil(Math.abs(dx)))
-    const step = dx / steps
-    for (let i = 0; i < steps; i++) {
-      next.x += step
-      if (footBlocked(mask, next)) {
-        next.x -= step
-        break
-      }
-    }
-  }
+  let next = moveAxis(foot, dx, 'x', mask, slideX)
+  next = moveAxis(next, dy, 'y', mask, slideY)
 
-  if (dy !== 0) {
-    const steps = Math.max(1, Math.ceil(Math.abs(dy)))
-    const step = dy / steps
-    for (let i = 0; i < steps; i++) {
-      next.y += step
-      if (footBlocked(mask, next)) {
-        next.y -= step
-        break
-      }
+  const movedX = next.x - foot.x
+  const movedY = next.y - foot.y
+  const movedLen = Math.hypot(movedX, movedY)
+  const intentLen = Math.hypot(dx, dy)
+  if (movedLen > intentLen && intentLen > 1e-6) {
+    const scale = intentLen / movedLen
+    const capped: AABB = {
+      ...next,
+      x: foot.x + movedX * scale,
+      y: foot.y + movedY * scale,
     }
+    if (!footBlocked(mask, capped)) return capped
   }
 
   return next
