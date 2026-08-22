@@ -21,7 +21,7 @@ export type Prop = {
   color: string
 }
 
-export type MatchPhase = 'lobby' | 'gateSlam' | 'blackout' | 'play'
+export type MatchPhase = 'landing' | 'blackout' | 'briefing' | 'play'
 
 /** Prop that can open a task modal when in range */
 export type Interactable = Prop & {

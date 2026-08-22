@@ -11,15 +11,12 @@ import {
   FLASHLIGHT_RADIUS,
   FUSE_RESERVE,
   GATE_SYNC_MS,
-  PLAYER_FOOT_H,
   PLAYER_SPRITE_H,
   PLAYER_SPRITE_W,
-  PLAYER_WALK_BOB_PX,
-  PLAYER_WALK_FPS,
   WORLD_H,
   WORLD_W,
 } from '../game/constants'
-import { playerAssetUrl, PLAYER_WALK_FRAMES, collisionMaskUrl } from '../game/assets'
+import { playerAssetUrl, collisionMaskUrl } from '../game/assets'
 import {
   createBorderMask,
   loadCollisionMask,
@@ -53,9 +50,9 @@ import {
   type WsClient,
 } from '../net/wsClient'
 import EscapeOverlay from './EscapeOverlay'
+import BriefingSequence from './BriefingSequence'
 import CollisionMaskTool from './CollisionMaskTool'
-import GateSlamOverlay from './GateSlamOverlay'
-import LobbyOverlay, { type LobbyMode } from './LobbyOverlay'
+import LandingHub, { type LobbyMode } from './LandingHub'
 import PartnerSim from './PartnerSim'
 import PodPropSprites from './PodPropSprites'
 import PowerHud from './PowerHud'
@@ -77,13 +74,14 @@ import WrenchTask from './tasks/WrenchTask'
 const forceSolo = isSoloMode()
 
 export default function WorldView() {
-  const [phase, setPhase] = useState<MatchPhase>('lobby')
+  const [phase, setPhase] = useState<MatchPhase>('landing')
   const [openTaskId, setOpenTaskId] = useState<string | null>(null)
   const [aiToast, setAiToast] = useState<string | null>(null)
   const [flags, setFlags] = useState<MatchFlags>(() => createFlags())
   const [syncProgress, setSyncProgress] = useState(0)
   const [matchBroken, setMatchBroken] = useState(false)
   const [facilityFlicker, setFacilityFlicker] = useState(0)
+  const [lightsReveal, setLightsReveal] = useState(0)
 
   const [lobbyMode, setLobbyMode] = useState<LobbyMode>(
     forceSolo ? 'solo' : 'pick',
@@ -103,7 +101,7 @@ export default function WorldView() {
   const promptRef = useRef<HTMLDivElement>(null)
   const ghostRef = useRef<HTMLDivElement>(null)
   const controlsRef = useRef<LoopControls>({
-    phase: 'lobby',
+    phase: 'landing',
     inputLocked: false,
     darkMode: false,
   })
@@ -144,7 +142,11 @@ export default function WorldView() {
   connectionRef.current = connectionMode
 
   const lockdownStarted =
-    phase === 'blackout' || phase === 'play' || lockdownStartedRef.current
+    phase === 'blackout' ||
+    phase === 'briefing' ||
+    phase === 'play' ||
+    lockdownStartedRef.current
+  const worldVisible = phase === 'play'
 
   controlsRef.current.phase = phase
   controlsRef.current.inputLocked =
@@ -165,6 +167,7 @@ export default function WorldView() {
         const locked =
           lockdownStartedRef.current ||
           phaseRef.current === 'blackout' ||
+          phaseRef.current === 'briefing' ||
           phaseRef.current === 'play'
         syncDarkToDom(next, locked)
         return next
@@ -203,11 +206,12 @@ export default function WorldView() {
     }
     closeWs()
     setFlags(createFlags())
-    setPhase('lobby')
+    setPhase('landing')
     setOpenTaskId(null)
     setAiToast(null)
     setSyncProgress(0)
     setMatchBroken(false)
+    setLightsReveal(0)
     lockdownStartedRef.current = false
     sawGridToast.current = false
     sawCodeToast.current = false
@@ -233,10 +237,12 @@ export default function WorldView() {
   }, [closeWs])
 
   const breakMatch = useCallback(() => {
-    if (phaseRef.current === 'lobby') return
+    if (phaseRef.current === 'landing') return
     setMatchBroken(true)
     setOpenTaskId(null)
   }, [])
+
+  const startLockdownRef = useRef<() => void>(() => {})
 
   const openConnection = useCallback(
     (role: 'host' | 'join', code?: string) => {
@@ -256,7 +262,7 @@ export default function WorldView() {
           setPeers(p)
           setPeerReady(false)
           setLocalReady(false)
-          if (phaseRef.current === 'lobby') {
+          if (phaseRef.current === 'landing') {
             setLobbyStatus('Partner left')
           } else {
             breakMatch()
@@ -265,50 +271,16 @@ export default function WorldView() {
         onReadyState: ({ pod: p, ready }) => {
           if (p !== podRef.current) setPeerReady(ready)
         },
-        onStartLockdown: () => setPhase('gateSlam'),
+        onStartLockdown: () => startLockdownRef.current(),
         onMatchEvent: (event) => dispatch(event, { remote: true }),
-        onGhost: (x, y) => {
+        onGhost: () => {
+          // Separate chambers — partner sprite stays fully invisible.
           const el = ghostRef.current
-          if (!el) return
-          const prevX = Number(el.dataset.gx ?? x)
-          const prevY = Number(el.dataset.gy ?? y)
-          const dx = x - prevX
-          const dy = y - prevY
-          const moving = Math.hypot(dx, dy) > 0.4
-          if (dx < -0.2) el.dataset.facing = '-1'
-          else if (dx > 0.2) el.dataset.facing = '1'
-          const facing = el.dataset.facing === '-1' ? -1 : 1
-
-          let frame = 0
-          let bobY = 0
-          if (moving) {
-            const now = performance.now()
-            const last = Number(el.dataset.walkAt ?? now)
-            const phase =
-              Number(el.dataset.walk ?? '0') +
-              ((now - last) / 1000) * PLAYER_WALK_FPS
-            el.dataset.walk = String(phase)
-            el.dataset.walkAt = String(now)
-            frame = 1 + (Math.floor(phase) % (PLAYER_WALK_FRAMES - 1))
-            bobY = Math.sin(phase * Math.PI) * PLAYER_WALK_BOB_PX
-          } else {
-            el.dataset.walk = '0'
-            el.dataset.walkAt = String(performance.now())
-          }
-
-          const gx = x - PLAYER_SPRITE_W / 2
-          const gy = y + PLAYER_FOOT_H / 2 - PLAYER_SPRITE_H + bobY
-          const flip = facing < 0 ? ' scaleX(-1)' : ''
-          el.style.transform = `translate(${gx}px, ${gy}px)${flip}`
-          el.style.opacity = '0.55'
-          el.style.zIndex = String(Math.floor(y + PLAYER_FOOT_H / 2))
-          el.dataset.frame = String(frame)
-          el.dataset.gx = String(x)
-          el.dataset.gy = String(y)
+          if (el) el.style.opacity = '0'
         },
         onClose: () => {
           if (intentionalCloseRef.current) return
-          if (phaseRef.current === 'lobby') setLobbyStatus('Disconnected')
+          if (phaseRef.current === 'landing') setLobbyStatus('Disconnected')
           else breakMatch()
         },
       })
@@ -632,26 +604,32 @@ export default function WorldView() {
     }))
   }, [applyFlags])
 
-  const handleSlamDone = useCallback(() => {
+  const startLockdown = useCallback(() => {
     lockdownStartedRef.current = true
     controlsRef.current.darkMode = true
     if (worldRef.current) worldRef.current.dataset.dark = '1'
     setPhase('blackout')
+  }, [])
+  startLockdownRef.current = startLockdown
+
+  const handleBriefingDone = useCallback(() => {
+    setPhase('play')
+    setLightsReveal((n) => n + 1)
     showToast('lightsOut')
-  }, [showToast])
+    const soloOrHost =
+      connectionRef.current !== 'online' || podRef.current === 'a'
+    if (soloOrHost) {
+      dispatch({ type: 'startedAt', at: Date.now() })
+    }
+  }, [dispatch, showToast])
 
   useEffect(() => {
     if (phase !== 'blackout') return
     const id = window.setTimeout(() => {
-      setPhase('play')
-      const soloOrHost =
-        connectionRef.current !== 'online' || podRef.current === 'a'
-      if (soloOrHost) {
-        dispatch({ type: 'startedAt', at: Date.now() })
-      }
+      setPhase('briefing')
     }, BLACKOUT_HOLD_MS)
     return () => window.clearTimeout(id)
-  }, [phase, dispatch])
+  }, [phase])
 
   const onPose = useCallback((x: number, y: number) => {
     if (connectionRef.current !== 'online' || !wsRef.current) return
@@ -758,6 +736,8 @@ export default function WorldView() {
           ref={worldRef}
           className="pod-world relative overflow-hidden bg-black shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_24px_80px_rgba(0,0,0,0.65)]"
           data-dark="0"
+          data-cinematic-hide={worldVisible ? '0' : '1'}
+          data-lights-reveal={worldVisible && lightsReveal > 0 ? '1' : '0'}
           style={
             {
               width: WORLD_W,
@@ -774,6 +754,7 @@ export default function WorldView() {
 
           <div
             ref={ghostRef}
+            hidden
             className="player-sprite pointer-events-none absolute left-0 top-0 opacity-0 will-change-transform"
             style={
               {
@@ -851,47 +832,7 @@ export default function WorldView() {
             youDevice={youDevice}
           />
 
-          {phase === 'lobby' && (
-            <LobbyOverlay
-              mode={lobbyMode}
-              roomCode={roomCode}
-              pod={pod}
-              peers={peers}
-              localReady={localReady}
-              peerReady={peerReady}
-              status={lobbyStatus}
-              onChooseSolo={() => {
-                setLobbyMode('solo')
-                setConnectionMode('solo')
-              }}
-              onChooseHost={() => {
-                setLobbyMode('host')
-                setLobbyStatus(null)
-                openConnection('host')
-              }}
-              onChooseJoin={() => {
-                setLobbyMode('join')
-                setLobbyStatus(null)
-              }}
-              onJoinSubmit={(code) => {
-                if (code.length < 4) return
-                openConnection('join', code)
-              }}
-              onToggleReady={() => {
-                const next = !localReady
-                setLocalReady(next)
-                if (wsRef.current) sendReady(wsRef.current, next)
-              }}
-              onSoloReady={(asPod) => {
-                setPod(asPod)
-                setPhase('gateSlam')
-              }}
-              onBack={resetMatch}
-            />
-          )}
-          {phase === 'gateSlam' && <GateSlamOverlay onDone={handleSlamDone} />}
-
-          {aiToast && !flags.escaped && !matchBroken && (
+          {aiToast && !flags.escaped && !matchBroken && phase === 'play' && (
             <p className="pointer-events-none absolute bottom-8 left-1/2 z-[10070] -translate-x-1/2 rounded bg-black/80 px-4 py-2 text-sm text-amber-200">
               <TypewriterText text={aiToast} onComplete={onToastTyped} />
             </p>
@@ -1016,6 +957,63 @@ export default function WorldView() {
           )}
         </div>
       </div>
+
+      {/* Full-viewport cinematic layers (escape letterbox scale) */}
+      {phase === 'landing' &&
+        createPortal(
+          <LandingHub
+            mode={lobbyMode}
+            roomCode={roomCode}
+            pod={pod}
+            peers={peers}
+            localReady={localReady}
+            peerReady={peerReady}
+            status={lobbyStatus}
+            onChooseSolo={() => {
+              setLobbyMode('solo')
+              setConnectionMode('solo')
+            }}
+            onChooseHost={() => {
+              setLobbyMode('host')
+              setLobbyStatus(null)
+              openConnection('host')
+            }}
+            onChooseJoin={() => {
+              setLobbyMode('join')
+              setLobbyStatus(null)
+            }}
+            onJoinSubmit={(code) => {
+              if (code.length < 4) return
+              openConnection('join', code)
+            }}
+            onToggleReady={() => {
+              const next = !localReady
+              setLocalReady(next)
+              if (wsRef.current) sendReady(wsRef.current, next)
+            }}
+            onSoloReady={(asPod) => {
+              setPod(asPod)
+              startLockdown()
+            }}
+            onBack={resetMatch}
+          />,
+          document.body,
+        )}
+
+      {phase === 'blackout' &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[20000] bg-black"
+            aria-hidden
+          />,
+          document.body,
+        )}
+
+      {phase === 'briefing' &&
+        createPortal(
+          <BriefingSequence pod={pod} onDone={handleBriefingDone} />,
+          document.body,
+        )}
 
       {/* Portal out of the CSS scale transform so letterbox chrome stays viewport-fixed */}
       {createPortal(

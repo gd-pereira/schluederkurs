@@ -1,4 +1,4 @@
-import { useState, type SyntheticEvent } from 'react'
+import { useState, type CSSProperties, type SyntheticEvent } from 'react'
 import { useKnockoutAsset } from '../hooks/useKnockoutAsset'
 import { propAssetUrl } from '../game/assets'
 import { footBottom } from '../game/collision'
@@ -18,6 +18,29 @@ const PROP_DISPLAY_W: Record<string, number> = {
   vase_shards: 46,
   wrench: 14,
   rag: 40,
+}
+
+/**
+ * Grade bright cutouts toward the dark industrial plate so they sit in-scene.
+ * Shadows stay separate (in-engine ellipse under the sprite).
+ */
+const PROP_BLEND: Record<string, CSSProperties> = {
+  vase: {
+    filter: 'brightness(0.72) contrast(0.9) saturate(0.58) sepia(0.14)',
+    opacity: 0.92,
+  },
+  vase_shards: {
+    filter: 'brightness(0.7) contrast(0.88) saturate(0.5) sepia(0.12)',
+    opacity: 0.9,
+  },
+  wrench: {
+    filter: 'brightness(0.74) contrast(0.86) saturate(0.35)',
+    opacity: 0.9,
+  },
+  rag: {
+    filter: 'brightness(0.78) contrast(0.92) saturate(0.7) sepia(0.08)',
+    opacity: 0.94,
+  },
 }
 
 /**
@@ -73,26 +96,57 @@ function OverlaySprite({
     h: PROP_DISPLAY_W[sizeKey] ?? 40,
   }
 
+  const blend = PROP_BLEND[sizeKey] ?? {}
+  const blendOpacity =
+    typeof blend.opacity === 'number' ? blend.opacity : 1
+  const visible = box ? opacity * blendOpacity : 0
+  const z = Math.floor(footBottom(prop.foot))
+
+  // Soft contact shadow — anchors prop to floor like baked plate furniture
+  const shadowW = Math.max(10, Math.round(draw.w * 0.72))
+  const shadowH = Math.max(4, Math.round(draw.w * 0.22))
+  const shadowLeft = draw.x + (draw.w - shadowW) / 2
+  const shadowTop = draw.y + draw.h - shadowH * 0.55
+
   return (
-    <img
-      src={src}
-      alt=""
-      draggable={false}
-      onLoad={onLoad}
-      className="pointer-events-none absolute max-w-none will-change-[opacity]"
-      style={{
-        left: `${draw.x}px`,
-        top: `${draw.y}px`,
-        width: `${draw.w}px`,
-        height: `${draw.h}px`,
-        objectFit: 'contain',
-        objectPosition: 'bottom center',
-        opacity: box ? opacity : 0,
-        transition: `opacity ${FADE_MS}ms ease-out`,
-        zIndex: Math.floor(footBottom(prop.foot)),
-      }}
-      aria-hidden
-    />
+    <>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute will-change-[opacity]"
+        style={{
+          left: `${shadowLeft}px`,
+          top: `${shadowTop}px`,
+          width: `${shadowW}px`,
+          height: `${shadowH}px`,
+          borderRadius: '50%',
+          background:
+            'radial-gradient(ellipse at center, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.18) 45%, transparent 72%)',
+          opacity: visible,
+          transition: `opacity ${FADE_MS}ms ease-out`,
+          zIndex: z - 1,
+        }}
+      />
+      <img
+        src={src}
+        alt=""
+        draggable={false}
+        onLoad={onLoad}
+        className="pointer-events-none absolute max-w-none will-change-[opacity]"
+        style={{
+          left: `${draw.x}px`,
+          top: `${draw.y}px`,
+          width: `${draw.w}px`,
+          height: `${draw.h}px`,
+          objectFit: 'contain',
+          objectPosition: 'bottom center',
+          opacity: visible,
+          transition: `opacity ${FADE_MS}ms ease-out`,
+          zIndex: z,
+          filter: blend.filter,
+        }}
+        aria-hidden
+      />
+    </>
   )
 }
 

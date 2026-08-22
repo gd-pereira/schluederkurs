@@ -27,29 +27,30 @@ Use the **Vite URL** (`5173`) while developing — it talks to WS on `8080` auto
 ### Solo (Partner sim)
 
 1. Open `http://localhost:5173` (or `http://localhost:5173/?solo=1`)
-2. Lobby → **Solo** → **Ready**
-3. Use the **Solo sim** buttons under the pod for the other player
+2. Landing → **Solo** → pick Pod A or B
+3. Watch the briefing (or Skip), then use the **Solo sim** buttons under the pod for the other player
 
 ### Two-player (real multiplayer)
 
 1. Keep `npm run dev:all` running
 2. Open **two** browser windows on `http://localhost:5173`
-3. Window A: **Create room** → copy the 4-letter code
-4. Window B: **Join room** → paste code → **Join**
+3. Window A: **Start Game** → copy the 4-letter code
+4. Window B: **Join Lobby** → paste code → **Join**
 5. Both click **Ready** when peers show `2/2`
-6. Play — ghost is the other player; no Partner sim
+6. Briefing → lights up — ghost is the other player; no Partner sim
 
 Tip: use a normal window + an Incognito/Private window so you don’t share the same tab state.
 
 ## Demo checklist (judges)
 
 1. `npm run dev:all` → open **two** windows on `http://localhost:5173`
-2. **Create room** / **Join** + Copy code → both **Ready** at `2/2`
-3. **Pod A:** lever → wrench → (wait for wipe) vase `8977` → locker fuse → fuse bay 70% → bypass hold  
-4. **Pod B:** lever → rag → wipe wall → keypad 80% (code from A) → yield if A needs power → bypass hold  
-5. **Solo:** Solo → Ready → use **Solo sim** “Next: …” buttons under the pod in order (lever → wipe → keypad → yield/bypass)
-6. Mid-game partner disconnect ends the match (Back to lobby) — no mid-game reconnect
-7. Escape → **Play again** returns to lobby without refreshing
+2. **Start Game** / **Join Lobby** + Copy code → both **Ready** at `2/2`
+3. Skip or watch briefing → lights into pods
+4. **Pod A:** lever → wrench → (wait for wipe) vase `8977` → locker fuse → fuse bay 70% → bypass hold  
+5. **Pod B:** lever → rag → wipe wall → keypad 80% (code from A) → yield if A needs power → bypass hold  
+6. **Solo:** Solo → Ready → briefing → use **Solo sim** “Next: …” buttons under the pod in order (lever → wipe → keypad → yield/bypass)
+7. Mid-game partner disconnect ends the match (Back to lobby) — no mid-game reconnect
+8. Escape → **Play again** returns to landing without refreshing
 
 Friend art: drop skill-named PNGs into `public/assets/` (see `src/game/assets.ts`).
 

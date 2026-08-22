@@ -55,3 +55,8 @@ export function playerAssetUrl(pod: 'a' | 'b' = 'a'): string {
 }
 
 export const PLAYER_WALK_FRAMES = 4
+
+/** Title-screen intro (gate slam → pullback) */
+export function titleIntroUrl(): string {
+  return `${BASE}/title_intro.mp4`
+}
