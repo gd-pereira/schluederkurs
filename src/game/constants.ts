@@ -11,6 +11,11 @@ export const PLAYER_SPRITE_H = 96
 export const PLAYER_FOOT_W = 28
 export const PLAYER_FOOT_H = 16
 
+/** Walk-cycle playback (frames 1–3; frame 0 = idle) */
+export const PLAYER_WALK_FPS = 8
+/** Vertical bob amplitude while walking (px) */
+export const PLAYER_WALK_BOB_PX = 2
+
 /** Spawn: foot top-left near center */
 export const PLAYER_START_X = WORLD_W / 2 - PLAYER_FOOT_W / 2
 export const PLAYER_START_Y = WORLD_H / 2 - PLAYER_FOOT_H / 2

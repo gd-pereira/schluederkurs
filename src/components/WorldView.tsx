@@ -13,9 +13,12 @@ import {
   PLAYER_FOOT_H,
   PLAYER_SPRITE_H,
   PLAYER_SPRITE_W,
+  PLAYER_WALK_BOB_PX,
+  PLAYER_WALK_FPS,
   WORLD_H,
   WORLD_W,
 } from '../game/constants'
+import { playerAssetUrl, PLAYER_WALK_FRAMES } from '../game/assets'
 import { HINT_DURATION_MS, hintText } from '../game/hints'
 import { startGameLoop } from '../game/loop'
 import {
@@ -253,11 +256,41 @@ export default function WorldView() {
         onGhost: (x, y) => {
           const el = ghostRef.current
           if (!el) return
+          const prevX = Number(el.dataset.gx ?? x)
+          const prevY = Number(el.dataset.gy ?? y)
+          const dx = x - prevX
+          const dy = y - prevY
+          const moving = Math.hypot(dx, dy) > 0.4
+          if (dx < -0.2) el.dataset.facing = '-1'
+          else if (dx > 0.2) el.dataset.facing = '1'
+          const facing = el.dataset.facing === '-1' ? -1 : 1
+
+          let frame = 0
+          let bobY = 0
+          if (moving) {
+            const now = performance.now()
+            const last = Number(el.dataset.walkAt ?? now)
+            const phase =
+              Number(el.dataset.walk ?? '0') +
+              ((now - last) / 1000) * PLAYER_WALK_FPS
+            el.dataset.walk = String(phase)
+            el.dataset.walkAt = String(now)
+            frame = 1 + (Math.floor(phase) % (PLAYER_WALK_FRAMES - 1))
+            bobY = Math.sin(phase * Math.PI) * PLAYER_WALK_BOB_PX
+          } else {
+            el.dataset.walk = '0'
+            el.dataset.walkAt = String(performance.now())
+          }
+
           const gx = x - PLAYER_SPRITE_W / 2
-          const gy = y + PLAYER_FOOT_H / 2 - PLAYER_SPRITE_H
-          el.style.transform = `translate(${gx}px, ${gy}px)`
+          const gy = y + PLAYER_FOOT_H / 2 - PLAYER_SPRITE_H + bobY
+          const flip = facing < 0 ? ' scaleX(-1)' : ''
+          el.style.transform = `translate(${gx}px, ${gy}px)${flip}`
           el.style.opacity = '0.55'
           el.style.zIndex = String(Math.floor(y + PLAYER_FOOT_H / 2))
+          el.dataset.frame = String(frame)
+          el.dataset.gx = String(x)
+          el.dataset.gy = String(y)
         },
         onClose: () => {
           if (intentionalCloseRef.current) return
@@ -424,12 +457,26 @@ export default function WorldView() {
   }, [dispatch, triggerFacilityFlicker])
 
   const completePartnerLever = useCallback(() => {
-    dispatch({ type: 'lever', side: 'b' })
+    const partnerSide = podRef.current === 'a' ? 'b' : 'a'
+    dispatch({ type: 'lever', side: partnerSide })
     triggerFacilityFlicker()
   }, [dispatch, triggerFacilityFlicker])
 
   const completePartnerWipe = useCallback(() => {
     dispatch({ type: 'wallWipe' })
+  }, [dispatch])
+
+  const completePartnerVaseSmash = useCallback(() => {
+    dispatch({ type: 'vaseSmash' })
+    triggerFacilityFlicker()
+  }, [dispatch, triggerFacilityFlicker])
+
+  const completePartnerFuseLoot = useCallback(() => {
+    dispatch({ type: 'fuseLoot' })
+  }, [dispatch])
+
+  const completePartnerFuseInstall = useCallback(() => {
+    dispatch({ type: 'fuseInstalled' })
   }, [dispatch])
 
   const completePartnerKeypadOpen = useCallback(() => {
@@ -446,7 +493,8 @@ export default function WorldView() {
 
   const setPartnerBypass = useCallback(
     (held: boolean) => {
-      dispatch({ type: 'bypass', side: 'b', held })
+      const partnerSide = podRef.current === 'a' ? 'b' : 'a'
+      dispatch({ type: 'bypass', side: partnerSide, held })
     },
     [dispatch],
   )
@@ -612,26 +660,30 @@ export default function WorldView() {
 
           <div
             ref={ghostRef}
-            className="pointer-events-none absolute left-0 top-0 rounded-lg opacity-0 will-change-transform"
-            style={{
-              width: PLAYER_SPRITE_W,
-              height: PLAYER_SPRITE_H,
-              backgroundColor: '#c4a04b',
-              boxShadow: 'inset 0 0 0 2px #3a2a08',
-            }}
+            className="player-sprite pointer-events-none absolute left-0 top-0 opacity-0 will-change-transform"
+            style={
+              {
+                width: PLAYER_SPRITE_W,
+                height: PLAYER_SPRITE_H,
+                '--player-sheet': `url(${playerAssetUrl()})`,
+              } as CSSProperties
+            }
+            data-frame="0"
+            data-facing="1"
             aria-hidden
           />
 
           <div
             ref={playerRef}
-            className="absolute left-0 top-0 will-change-transform"
-            style={{
-              width: PLAYER_SPRITE_W,
-              height: PLAYER_SPRITE_H,
-              backgroundColor: '#4bc4c0',
-              boxShadow: 'inset 0 0 0 2px #0c1014',
-              borderRadius: 8,
-            }}
+            className="player-sprite absolute left-0 top-0 will-change-transform"
+            style={
+              {
+                width: PLAYER_SPRITE_W,
+                height: PLAYER_SPRITE_H,
+                '--player-sheet': `url(${playerAssetUrl()})`,
+              } as CSSProperties
+            }
+            data-frame="0"
             aria-label="Player"
           />
 
@@ -650,7 +702,13 @@ export default function WorldView() {
             aria-hidden
           />
 
-          <PropPlaceTool />
+          <PropPlaceTool
+            markers={podWorld.interactables.map((item) => ({
+              id: item.id,
+              foot: item.foot,
+              sprite: item.sprite,
+            }))}
+          />
 
           <PowerHud
             visible={flags.gridOnline}
@@ -690,7 +748,10 @@ export default function WorldView() {
                 setLocalReady(next)
                 if (wsRef.current) sendReady(wsRef.current, next)
               }}
-              onSoloReady={() => setPhase('gateSlam')}
+              onSoloReady={(asPod) => {
+                setPod(asPod)
+                setPhase('gateSlam')
+              }}
               onBack={resetMatch}
             />
           )}
@@ -814,7 +875,8 @@ export default function WorldView() {
       <div className="mt-3 flex min-h-20 w-full shrink-0 flex-col items-center justify-start">
         <PartnerSim
           enabled={showPartnerSim}
-          partnerLeverDone={flags.leverB}
+          localPod={pod}
+          partnerLeverDone={pod === 'a' ? flags.leverB : flags.leverA}
           onPartnerLever={completePartnerLever}
           gridOn={flags.gridOnline}
           wallWiped={flags.wallWiped}
@@ -824,11 +886,16 @@ export default function WorldView() {
           partnerKeypadOpen={flags.reserveB > 0 && !flags.keypadDone}
           onPartnerKeypadOpen={completePartnerKeypadOpen}
           onPartnerKeypadFinish={completePartnerKeypadFinish}
-          partnerReserve={flags.reserveB}
+          partnerReserve={pod === 'a' ? flags.reserveB : flags.reserveA}
           onPartnerYield={completePartnerYield}
           fuseInstalled={flags.fuseInstalled}
-          partnerBypassHeld={flags.bypassB}
+          partnerBypassHeld={pod === 'a' ? flags.bypassB : flags.bypassA}
           onPartnerBypassHold={setPartnerBypass}
+          vaseSmashed={flags.vaseSmashed}
+          onPartnerVaseSmash={completePartnerVaseSmash}
+          partnerHasFuse={flags.hasFuse}
+          onPartnerFuseLoot={completePartnerFuseLoot}
+          onPartnerFuseInstall={completePartnerFuseInstall}
           escaped={flags.escaped}
         />
       </div>

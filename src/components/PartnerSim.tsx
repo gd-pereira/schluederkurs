@@ -1,8 +1,14 @@
 type PartnerSimProps = {
   enabled: boolean
+  /** Local player pod — partner buttons drive the other side */
+  localPod: 'a' | 'b'
+  escaped: boolean
+  // Shared / either
+  gridOn: boolean
+  fuseInstalled: boolean
+  // When local is A → partner is B
   partnerLeverDone: boolean
   onPartnerLever: () => void
-  gridOn: boolean
   wallWiped: boolean
   onPartnerWipe: () => void
   codeKnown: boolean
@@ -12,13 +18,17 @@ type PartnerSimProps = {
   onPartnerKeypadFinish: () => void
   partnerReserve: number
   onPartnerYield: () => void
-  fuseInstalled: boolean
   partnerBypassHeld: boolean
   onPartnerBypassHold: (held: boolean) => void
-  escaped: boolean
+  // When local is B → partner is A
+  vaseSmashed: boolean
+  onPartnerVaseSmash: () => void
+  partnerHasFuse: boolean
+  onPartnerFuseLoot: () => void
+  onPartnerFuseInstall: () => void
 }
 
-type NextKind =
+type NextKindA =
   | 'lever'
   | 'wipe'
   | 'waitCode'
@@ -27,7 +37,15 @@ type NextKind =
   | 'waitFuse'
   | 'bypass'
 
-function resolveNext(props: PartnerSimProps): NextKind {
+type NextKindB =
+  | 'lever'
+  | 'waitWipe'
+  | 'vase'
+  | 'fuseLoot'
+  | 'fuseInstall'
+  | 'bypass'
+
+function resolveNextA(props: PartnerSimProps): NextKindA {
   if (!props.partnerLeverDone) return 'lever'
   if (!props.gridOn) return 'lever'
   if (!props.wallWiped) return 'wipe'
@@ -40,13 +58,32 @@ function resolveNext(props: PartnerSimProps): NextKind {
   return 'bypass'
 }
 
-const NEXT_LABEL: Record<NextKind, string> = {
+function resolveNextB(props: PartnerSimProps): NextKindB {
+  if (!props.partnerLeverDone) return 'lever'
+  if (!props.gridOn) return 'lever'
+  if (!props.wallWiped) return 'waitWipe'
+  if (!props.vaseSmashed) return 'vase'
+  if (!props.partnerHasFuse) return 'fuseLoot'
+  if (!props.fuseInstalled) return 'fuseInstall'
+  return 'bypass'
+}
+
+const LABEL_A: Record<NextKindA, string> = {
   lever: 'Next: partner lever',
   wipe: 'Next: wipe wall',
   waitCode: 'Next: waiting for vase code…',
   keypadOpen: 'Next: open keypad (80%)',
   keypadFinish: 'Next: finish keypad',
   waitFuse: 'Next: waiting for fuse install…',
+  bypass: 'Next: hold partner bypass',
+}
+
+const LABEL_B: Record<NextKindB, string> = {
+  lever: 'Next: partner lever',
+  waitWipe: 'Next: waiting for your wall wipe…',
+  vase: 'Next: partner smash vase',
+  fuseLoot: 'Next: partner take fuse',
+  fuseInstall: 'Next: partner install fuse',
   bypass: 'Next: hold partner bypass',
 }
 
@@ -60,6 +97,7 @@ const muted =
 export default function PartnerSim(props: PartnerSimProps) {
   const {
     enabled,
+    localPod,
     escaped,
     onPartnerLever,
     onPartnerWipe,
@@ -69,21 +107,84 @@ export default function PartnerSim(props: PartnerSimProps) {
     onPartnerYield,
     partnerBypassHeld,
     onPartnerBypassHold,
+    onPartnerVaseSmash,
+    onPartnerFuseLoot,
+    onPartnerFuseInstall,
   } = props
 
   if (!enabled || escaped) return null
 
-  const next = resolveNext(props)
+  if (localPod === 'b') {
+    const next = resolveNextB(props)
+    return (
+      <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <span className="text-xs uppercase tracking-wider text-neutral-500">
+            Solo sim · you Pod B
+          </span>
+          <span className="text-xs font-semibold text-amber-300/90">
+            {LABEL_B[next]}
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {next === 'lever' && (
+            <button
+              type="button"
+              onClick={onPartnerLever}
+              className={`${btn} ${primary}`}
+            >
+              Partner pulled lever
+            </button>
+          )}
+          {next === 'vase' && (
+            <button
+              type="button"
+              onClick={onPartnerVaseSmash}
+              className={`${btn} ${primary}`}
+            >
+              Partner smashed vase
+            </button>
+          )}
+          {next === 'fuseLoot' && (
+            <button
+              type="button"
+              onClick={onPartnerFuseLoot}
+              className={`${btn} ${primary}`}
+            >
+              Partner took fuse
+            </button>
+          )}
+          {next === 'fuseInstall' && (
+            <button
+              type="button"
+              onClick={onPartnerFuseInstall}
+              className={`${btn} ${primary}`}
+            >
+              Partner installed fuse
+            </button>
+          )}
+          {next === 'bypass' && (
+            <BypassHoldButton
+              held={partnerBypassHeld}
+              onHoldChange={onPartnerBypassHold}
+            />
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  const next = resolveNextA(props)
   const showYield = partnerReserve > 0
 
   return (
     <div className="flex flex-col items-center gap-2">
       <div className="flex flex-wrap items-center justify-center gap-2">
         <span className="text-xs uppercase tracking-wider text-neutral-500">
-          Solo sim
+          Solo sim · you Pod A
         </span>
         <span className="text-xs font-semibold text-amber-300/90">
-          {NEXT_LABEL[next]}
+          {LABEL_A[next]}
         </span>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-2">
@@ -124,22 +225,10 @@ export default function PartnerSim(props: PartnerSimProps) {
           </button>
         )}
         {next === 'bypass' && (
-          <button
-            type="button"
-            className={`${btn} select-none ${
-              partnerBypassHeld ? primary : muted
-            }`}
-            onPointerDown={(e) => {
-              e.preventDefault()
-              ;(e.target as HTMLButtonElement).setPointerCapture(e.pointerId)
-              onPartnerBypassHold(true)
-            }}
-            onPointerUp={() => onPartnerBypassHold(false)}
-            onPointerCancel={() => onPartnerBypassHold(false)}
-            onLostPointerCapture={() => onPartnerBypassHold(false)}
-          >
-            {partnerBypassHeld ? 'Partner holding bypass…' : 'Hold partner bypass'}
-          </button>
+          <BypassHoldButton
+            held={partnerBypassHeld}
+            onHoldChange={onPartnerBypassHold}
+          />
         )}
         {showYield && (
           <button
@@ -152,5 +241,30 @@ export default function PartnerSim(props: PartnerSimProps) {
         )}
       </div>
     </div>
+  )
+}
+
+function BypassHoldButton({
+  held,
+  onHoldChange,
+}: {
+  held: boolean
+  onHoldChange: (held: boolean) => void
+}) {
+  return (
+    <button
+      type="button"
+      className={`${btn} select-none ${held ? primary : muted}`}
+      onPointerDown={(e) => {
+        e.preventDefault()
+        ;(e.target as HTMLButtonElement).setPointerCapture(e.pointerId)
+        onHoldChange(true)
+      }}
+      onPointerUp={() => onHoldChange(false)}
+      onPointerCancel={() => onHoldChange(false)}
+      onLostPointerCapture={() => onHoldChange(false)}
+    >
+      {held ? 'Partner holding bypass…' : 'Hold partner bypass'}
+    </button>
   )
 }

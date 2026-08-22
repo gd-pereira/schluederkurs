@@ -6,7 +6,8 @@ export default function App() {
       <header className="shrink-0 text-center">
         <h1 className="text-xl font-semibold tracking-tight">Incompetent Chambers</h1>
         <p className="mt-1 text-sm text-neutral-400">
-          Lobby: Solo / Create / Join · WASD · E · Partner sim (solo) · L dark · P place rect
+          Lobby: Solo Pod A/B · Create / Join · WASD · E · P place (shows feet) · L
+          dark
         </p>
       </header>
       {/* No overflow-auto: focus inside task modals must not scroll the game frame */}

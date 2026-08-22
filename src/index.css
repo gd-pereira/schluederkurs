@@ -138,3 +138,25 @@ body {
     opacity: 1;
   }
 }
+
+/* Tall player / ghost — 4-frame horizontal sheet, shadows stay in-engine */
+.player-sprite {
+  background-image: var(--player-sheet);
+  background-repeat: no-repeat;
+  background-size: 400% 100%;
+  background-position: 0% 0;
+  background-color: transparent;
+}
+
+.player-sprite[data-frame='1'] {
+  background-position: 33.333% 0;
+}
+
+.player-sprite[data-frame='2'] {
+  background-position: 66.666% 0;
+}
+
+.player-sprite[data-frame='3'] {
+  background-position: 100% 0;
+}
+

@@ -36,8 +36,8 @@ function hotspot(
 }
 
 /**
- * Visible overlay prop: sprite = exact top-left + size on the 1280×720 plate.
- * Foot is approximate (interact / Y-sort only).
+ * Visible overlay prop: sprite = placement slot on the 1280×720 plate.
+ * Foot is derived for interact / Y-sort (override with foot if needed).
  */
 function overlay(
   id: string,
@@ -76,15 +76,15 @@ export function furnitureSolidsA(): AABB[] {
 
 export function furnitureSolidsB(): AABB[] {
   return [
-    { x: 60, y: 490, w: 170, h: 95 }, // cart / barrels
-    { x: 980, y: 490, w: 200, h: 100 }, // BR clutter
-    { x: 100, y: 250, w: 90, h: 70 }, // grimy wall base
-    { x: 360, y: 320, w: 70, h: 50 }, // lever station
-    { x: 1040, y: 250, w: 80, h: 55 }, // painting bay
-    { x: 520, y: 540, w: 200, h: 55 }, // bypass bank
-    { x: 500, y: 300, w: 180, h: 55 }, // mid platform
-    { x: 700, y: 360, w: 120, h: 40 }, // mid cables
-    { x: 480, y: 160, w: 240, h: 40 }, // back ledge
+    { x: 70, y: 500, w: 160, h: 90 }, // BL service cart
+    { x: 1080, y: 560, w: 90, h: 50 }, // BR pipe stub
+    { x: 70, y: 220, w: 80, h: 90 }, // left grimy panel base
+    { x: 340, y: 340, w: 80, h: 55 }, // red lever pedestal
+    { x: 1060, y: 230, w: 90, h: 70 }, // painting bay
+    { x: 520, y: 540, w: 220, h: 60 }, // bypass console
+    { x: 560, y: 300, w: 100, h: 90 }, // center barrels
+    { x: 780, y: 340, w: 110, h: 70 }, // mid-right valve assembly
+    { x: 480, y: 150, w: 280, h: 45 }, // back gate ledge
   ]
 }
 
@@ -111,11 +111,25 @@ export type PodWorld = {
 export function createPodWorld(pod: 'a' | 'b'): PodWorld {
   if (pod === 'b') {
     const interactables = [
-      hotspot('lever', 'lever', 200, 300, 40, 30),
-      hotspot('rag', 'rag', 150, 500, 48, 36, 48),
-      hotspot('wall', 'wall', 100, 220, 90, 36, 120),
-      hotspot('keypad', 'keypad', 1050, 240, 48, 30, 100),
-      hotspot('bypass', 'bypass', 540, 580, 120, 40, 70),
+      // Pins from in-game P placer (Pod B)
+      hotspot('lever', 'lever', 367, 279, 45, 65),
+      // Rag: slot center = visual center (OverlaySprite bottom-centers display on slot)
+      overlay(
+        'rag',
+        'rag',
+        { x: 107, y: 518, w: 20, h: 41 },
+        { x: 80, y: 497, w: 101, h: 116 },
+      ),
+      // Wall: foot = placement slot (no tall prompt offset)
+      overlay(
+        'wall',
+        'wall',
+        { x: 71, y: 305, w: 43, h: 52 },
+        { x: 71, y: 305, w: 43, h: 52 },
+      ),
+      hotspot('keypad', 'keypad', 1054, 97, 29, 39, 110),
+      // Gate bypass console (bottom center, green screen)
+      hotspot('bypass', 'bypass', 560, 575, 130, 40, 70),
     ]
     const byId: Record<string, Interactable> = {}
     for (const item of interactables) byId[item.id] = item

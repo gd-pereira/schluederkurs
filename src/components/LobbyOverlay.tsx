@@ -15,7 +15,7 @@ type LobbyOverlayProps = {
   onChooseJoin: () => void
   onJoinSubmit: (code: string) => void
   onToggleReady: () => void
-  onSoloReady: () => void
+  onSoloReady: (asPod: 'a' | 'b') => void
   onBack: () => void
 }
 
@@ -111,15 +111,25 @@ export default function LobbyOverlay({
       {mode === 'solo' && (
         <>
           <p className="mt-2 max-w-sm text-center text-sm text-neutral-400">
-            Partner sim buttons stand in for the other pod.
+            Partner sim buttons stand in for the other pod. Pick which room to
+            place / play.
           </p>
-          <button
-            type="button"
-            onClick={onSoloReady}
-            className="mt-8 rounded-md border-2 border-amber-500/80 bg-amber-500/15 px-8 py-3 text-sm font-bold uppercase tracking-wider text-amber-300 hover:bg-amber-500/25"
-          >
-            Ready
-          </button>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => onSoloReady('a')}
+              className="rounded-md border-2 border-amber-500/80 bg-amber-500/15 px-6 py-3 text-sm font-bold uppercase tracking-wider text-amber-300 hover:bg-amber-500/25"
+            >
+              Ready · Pod A
+            </button>
+            <button
+              type="button"
+              onClick={() => onSoloReady('b')}
+              className="rounded-md border-2 border-teal-500/80 bg-teal-500/15 px-6 py-3 text-sm font-bold uppercase tracking-wider text-teal-300 hover:bg-teal-500/25"
+            >
+              Ready · Pod B
+            </button>
+          </div>
           <button
             type="button"
             onClick={onBack}
