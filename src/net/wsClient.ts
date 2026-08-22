@@ -14,6 +14,7 @@ export type WsHandlers = {
   onMatchEvent?: (event: MatchEvent, from: PodId) => void
   onGhost?: (x: number, y: number, from: PodId) => void
   onClose?: () => void
+  onOpen?: () => void
 }
 
 export type WsClient = {
@@ -24,6 +25,19 @@ export type WsClient = {
 export function connectWs(handlers: WsHandlers): WsClient {
   const url = defaultWsUrl()
   const ws = new WebSocket(url)
+  const queue: Record<string, unknown>[] = []
+
+  function flush() {
+    while (queue.length > 0 && ws.readyState === WebSocket.OPEN) {
+      const msg = queue.shift()
+      if (msg) ws.send(JSON.stringify(msg))
+    }
+  }
+
+  ws.addEventListener('open', () => {
+    flush()
+    handlers.onOpen?.()
+  })
 
   ws.addEventListener('message', (ev) => {
     let msg: Record<string, unknown>
@@ -81,12 +95,22 @@ export function connectWs(handlers: WsHandlers): WsClient {
   })
 
   ws.addEventListener('close', () => handlers.onClose?.())
+  ws.addEventListener('error', () => {
+    handlers.onError?.(
+      `Cannot reach game server at ${url}. Is npm run server / dev:all running?`,
+    )
+  })
 
   return {
     send(msg) {
-      if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg))
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(msg))
+      } else {
+        queue.push(msg)
+      }
     },
     close() {
+      queue.length = 0
       ws.close()
     },
   }

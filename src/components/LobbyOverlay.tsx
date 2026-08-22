@@ -133,18 +133,27 @@ export default function LobbyOverlay({
           <p className="mt-3 font-mono text-3xl tracking-[0.3em] text-amber-300">
             {roomCode ?? '····'}
           </p>
-          <p className="mt-2 text-sm text-neutral-400">
-            You are Pod {pod?.toUpperCase() ?? '?'} · Peers {peers}/2
-          </p>
-          <p className="mt-1 text-xs text-neutral-500">
-            You: {localReady ? 'Ready' : 'Waiting'} · Partner:{' '}
-            {peers < 2 ? '—' : peerReady ? 'Ready' : 'Waiting'}
-          </p>
+          {!roomCode && (
+            <p className="mt-2 text-sm text-neutral-400">
+              Connecting to game server…
+            </p>
+          )}
+          {roomCode && (
+            <>
+              <p className="mt-2 text-sm text-neutral-400">
+                You are Pod {pod?.toUpperCase() ?? '?'} · Peers {peers}/2
+              </p>
+              <p className="mt-1 text-xs text-neutral-500">
+                You: {localReady ? 'Ready' : 'Waiting'} · Partner:{' '}
+                {peers < 2 ? '—' : peerReady ? 'Ready' : 'Waiting'}
+              </p>
+            </>
+          )}
           {status && <p className="mt-2 text-xs text-red-400">{status}</p>}
           <button
             type="button"
             onClick={onToggleReady}
-            disabled={peers < 2}
+            disabled={!roomCode || peers < 2}
             className="mt-6 rounded-md border-2 border-amber-500/80 bg-amber-500/15 px-8 py-3 text-sm font-bold uppercase tracking-wider text-amber-300 hover:bg-amber-500/25 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {localReady ? 'Unready' : 'Ready'}
