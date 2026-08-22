@@ -2,96 +2,111 @@ import { useAssetReady } from '../hooks/useAssetReady'
 import { propAssetUrl } from '../game/assets'
 import { footBottom } from '../game/collision'
 import type { MatchFlags } from '../game/matchFlags'
+import type { Prop } from '../game/types'
 import type { PodWorld } from '../game/world'
 import type { PodId } from '../net/matchEvents'
 
-function propVisualState(
-  id: string,
-  flags: MatchFlags,
-  pod: PodId,
-): { opacity: number; backgroundColor?: string } {
-  switch (id) {
-    case 'lever':
-      return {
-        opacity: (pod === 'b' ? flags.leverB : flags.leverA) ? 0.45 : 1,
-      }
-    case 'wrench':
-      return { opacity: flags.hasWrench ? 0 : 1 }
-    case 'rag':
-      return { opacity: flags.hasRag ? 0 : 1 }
-    case 'vase':
-      return {
-        opacity: flags.vaseSmashed ? 0.5 : 1,
-        backgroundColor: flags.vaseSmashed ? '#3a2848' : undefined,
-      }
-    case 'locker':
-      return {
-        opacity: flags.hasFuse ? 0.55 : 1,
-        backgroundColor: flags.hasFuse ? '#2a3a32' : undefined,
-      }
-    case 'fuse':
-      return {
-        opacity: flags.fuseInstalled ? 0.55 : flags.hasFuse ? 1 : 0.45,
-        backgroundColor: flags.fuseInstalled ? '#5c3d0e' : undefined,
-      }
-    case 'bypass':
-      return {
-        opacity: flags.fuseInstalled ? 1 : 0.35,
-        backgroundColor: flags.escaped ? '#0f2940' : undefined,
-      }
-    case 'wall':
-      return { opacity: flags.wallWiped ? 0.4 : 1 }
-    case 'keypad':
-      return { opacity: flags.keypadDone ? 0.45 : 1 }
-    default:
-      return { opacity: 1 }
-  }
-}
-
-function PodPropSprite({
+function OverlaySprite({
+  url,
   prop,
-  flags,
-  pod,
+  opacity,
 }: {
-  prop: PodWorld['props'][number]
-  flags: MatchFlags
-  pod: PodId
+  url: string
+  prop: Prop
+  opacity: number
 }) {
-  const url = propAssetUrl(prop.id)
-  const imageReady = useAssetReady(url)
-  const visual = propVisualState(prop.id, flags, pod)
-
+  const ready = useAssetReady(url)
+  if (!ready || opacity <= 0) return null
   return (
     <div
-      className="absolute left-0 top-0 will-change-transform"
+      className="pointer-events-none absolute left-0 top-0"
       style={{
         width: prop.sprite.w,
         height: prop.sprite.h,
         transform: `translate(${prop.sprite.x}px, ${prop.sprite.y}px)`,
-        backgroundColor: visual.backgroundColor ?? prop.color,
-        backgroundImage: imageReady && url ? `url(${url})` : undefined,
+        backgroundImage: `url(${url})`,
         backgroundSize: 'contain',
         backgroundPosition: 'center bottom',
         backgroundRepeat: 'no-repeat',
-        boxShadow: imageReady ? undefined : 'inset 0 0 0 2px #1a1208',
-        borderRadius: 4,
-        opacity: visual.opacity,
+        opacity,
+        transition: 'opacity 200ms ease-out',
         zIndex: Math.floor(footBottom(prop.foot)),
       }}
-      aria-hidden={prop.id !== 'lever' && prop.id !== 'bypass'}
-      aria-label={
-        prop.id === 'lever'
-          ? 'Lever'
-          : prop.id === 'bypass'
-            ? 'Bypass console'
-            : undefined
-      }
+      aria-hidden
     />
   )
 }
 
-export function renderPodProps(world: PodWorld, flags: MatchFlags, pod: PodId) {
-  return world.props.map((prop) => (
-    <PodPropSprite key={prop.id} prop={prop} flags={flags} pod={pod} />
-  ))
+/**
+ * Transparent overlays for changeable props only.
+ * Plate holds empty furniture; wrench/rag/vase sit on top.
+ */
+export function renderPodProps(
+  world: PodWorld,
+  flags: MatchFlags,
+  _pod: PodId,
+) {
+  return world.props.map((prop) => {
+    if (prop.id === 'wrench') {
+      const url = propAssetUrl('wrench')
+      if (!url) return null
+      return (
+        <OverlaySprite
+          key={prop.id}
+          url={url}
+          prop={prop}
+          opacity={flags.hasWrench ? 0 : 1}
+        />
+      )
+    }
+    if (prop.id === 'rag') {
+      const url = propAssetUrl('rag')
+      if (!url) return null
+      return (
+        <OverlaySprite
+          key={prop.id}
+          url={url}
+          prop={prop}
+          opacity={flags.hasRag ? 0 : 1}
+        />
+      )
+    }
+    if (prop.id === 'vase') {
+      const intact = propAssetUrl('vase')
+      const shards = propAssetUrl('vase_shards')
+      return (
+        <div key={prop.id}>
+          {intact && (
+            <OverlaySprite
+              url={intact}
+              prop={prop}
+              opacity={flags.vaseSmashed ? 0 : 1}
+            />
+          )}
+          {shards && (
+            <OverlaySprite
+              url={shards}
+              prop={prop}
+              opacity={flags.vaseSmashed ? 1 : 0}
+            />
+          )}
+        </div>
+      )
+    }
+
+    // Lever/locker/fuse/bypass/wall/keypad: baked into plate — invisible hotspot only
+    return (
+      <div
+        key={prop.id}
+        className="pointer-events-none absolute left-0 top-0 opacity-0"
+        style={{
+          width: prop.sprite.w,
+          height: prop.sprite.h,
+          transform: `translate(${prop.sprite.x}px, ${prop.sprite.y}px)`,
+          zIndex: Math.floor(footBottom(prop.foot)),
+        }}
+        aria-hidden
+      />
+    )
+  })
 }

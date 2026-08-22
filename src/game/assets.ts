@@ -1,9 +1,9 @@
 /**
- * Friend drops PNGs into public/assets/ using these skill filenames:
- * breaker_box, vase_pedestal, painting, gate_console, locker, cart,
- * item_lever, item_rag, item_wrench, item_fuse,
- * modal_grime_wall, modal_vase_1..4, modal_keypad
- * Missing files fall back to colored placeholders (no broken icons).
+ * Locked base room plates (empty furniture surfaces) + transparent prop overlays.
+ * Never full-plate swap or big rectangular patches.
+ *
+ * Overlay filenames: item_wrench, item_rag, vase_intact, vase_shards
+ * Modal art still uses modal_* names.
  */
 
 const BASE = '/assets'
@@ -12,18 +12,16 @@ export function assetUrl(skillName: string): string {
   return `${BASE}/${skillName}.png`
 }
 
-/** World prop id → skill filename (crate stays color-only) */
+export function roomPlateUrl(pod: 'a' | 'b'): string {
+  return assetUrl(pod === 'a' ? 'pod_a' : 'pod_b')
+}
+
+/** Changeable world overlays (transparent PNGs) */
 export const PROP_ASSET: Partial<Record<string, string>> = {
-  lever: 'item_lever',
-  rag: 'item_rag',
   wrench: 'item_wrench',
-  fuse: 'item_fuse',
-  vase: 'vase_pedestal',
-  keypad: 'painting',
-  bypass: 'gate_console',
-  locker: 'locker',
-  cart: 'cart',
-  breaker: 'breaker_box',
+  rag: 'item_rag',
+  vase: 'vase_intact',
+  vase_shards: 'vase_shards',
 }
 
 export const MODAL_ASSET = {

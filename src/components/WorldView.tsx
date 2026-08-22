@@ -14,7 +14,6 @@ import {
   PLAYER_FOOT_H,
   PLAYER_SPRITE_H,
   PLAYER_SPRITE_W,
-  WALL_THICKNESS,
   WORLD_H,
   WORLD_W,
 } from '../game/constants'
@@ -51,6 +50,7 @@ import LobbyOverlay, { type LobbyMode } from './LobbyOverlay'
 import PartnerSim from './PartnerSim'
 import { renderPodProps } from './PodPropSprites'
 import PowerHud from './PowerHud'
+import RoomPlateLayers from './RoomPlateLayers'
 import TaskModal from './TaskModal'
 import BypassTask from './tasks/BypassTask'
 import FuseTask from './tasks/FuseTask'
@@ -592,35 +592,7 @@ export default function WorldView() {
             } as CSSProperties
           }
         >
-          <div
-            className="pointer-events-none absolute inset-x-0 top-0 bg-neutral-700"
-            style={{ height: WALL_THICKNESS }}
-          />
-          <div
-            className="pointer-events-none absolute inset-x-0 bottom-0 bg-neutral-700"
-            style={{ height: WALL_THICKNESS }}
-          />
-          <div
-            className="pointer-events-none absolute inset-y-0 left-0 bg-neutral-700"
-            style={{ width: WALL_THICKNESS }}
-          />
-          <div
-            className="pointer-events-none absolute inset-y-0 right-0 bg-neutral-700"
-            style={{ width: WALL_THICKNESS }}
-          />
-
-          <div
-            className="pointer-events-none absolute inset-0 opacity-30"
-            style={{
-              top: WALL_THICKNESS,
-              left: WALL_THICKNESS,
-              right: WALL_THICKNESS,
-              bottom: WALL_THICKNESS,
-              backgroundImage:
-                'linear-gradient(to right, #3f3f46 1px, transparent 1px), linear-gradient(to bottom, #3f3f46 1px, transparent 1px)',
-              backgroundSize: '64px 64px',
-            }}
-          />
+          <RoomPlateLayers pod={pod} />
 
           {renderPodProps(podWorld, flags, pod)}
 

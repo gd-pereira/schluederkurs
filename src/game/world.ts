@@ -4,334 +4,123 @@ import type { AABB, Interactable, Prop } from './types'
 export function createWalls(): AABB[] {
   const t = WALL_THICKNESS
   return [
-    { x: 0, y: 0, w: WORLD_W, h: t }, // top
-    { x: 0, y: WORLD_H - t, w: WORLD_W, h: t }, // bottom
-    { x: 0, y: 0, w: t, h: WORLD_H }, // left
-    { x: WORLD_W - t, y: 0, w: t, h: WORLD_H }, // right
+    { x: 0, y: 0, w: WORLD_W, h: t },
+    { x: 0, y: WORLD_H - t, w: WORLD_W, h: t },
+    { x: 0, y: 0, w: t, h: WORLD_H },
+    { x: WORLD_W - t, y: 0, w: t, h: WORLD_H },
   ]
 }
 
-/** Tall crate: large sprite, small foot at base for collision / Y-sort */
-export function createPlaceholderCrate(): Prop {
-  const footW = 60
-  const footH = 40
-  const spriteW = 80
-  const spriteH = 120
-  const footX = 900
-  const footY = 400
-
+/** Invisible interact hotspot — sprite box used for [E] prompt anchor only */
+function hotspot(
+  id: string,
+  taskId: string,
+  footX: number,
+  footY: number,
+  footW: number,
+  footH: number,
+  promptH = 80,
+): Interactable {
   return {
-    id: 'crate',
+    id,
+    taskId,
     foot: { x: footX, y: footY, w: footW, h: footH },
     sprite: {
-      x: footX + (footW - spriteW) / 2,
-      y: footY + footH - spriteH,
-      w: spriteW,
-      h: spriteH,
+      x: footX + footW / 2 - 20,
+      y: footY + footH - promptH,
+      w: 40,
+      h: promptH,
     },
-    color: '#8b6914',
+    color: 'transparent',
   }
 }
 
-/** Local lever stub — left of center, distinct from crate */
-export function createLeverProp(): Interactable {
-  const footW = 36
-  const footH = 28
-  const spriteW = 48
-  const spriteH = 100
-  const footX = 380
-  const footY = 420
-
-  return {
-    id: 'lever',
-    taskId: 'lever',
-    foot: { x: footX, y: footY, w: footW, h: footH },
-    sprite: {
-      x: footX + (footW - spriteW) / 2,
-      y: footY + footH - spriteH,
-      w: spriteW,
-      h: spriteH,
-    },
-    color: '#c45c26',
-  }
+/** Collision for plate-baked furniture / mid-room islands (Pod A) */
+export function furnitureSolidsA(): AABB[] {
+  return [
+    { x: 60, y: 470, w: 150, h: 100 }, // BL crates
+    { x: 980, y: 480, w: 200, h: 110 }, // BR spools
+    { x: 80, y: 190, w: 90, h: 70 }, // left wall panels
+    { x: 200, y: 200, w: 55, h: 40 }, // vase pedestal base
+    { x: 320, y: 330, w: 70, h: 50 }, // lever station base
+    { x: 1040, y: 250, w: 80, h: 60 }, // locker bay
+    { x: 520, y: 540, w: 200, h: 55 }, // bypass console bank
+    { x: 480, y: 300, w: 160, h: 50 }, // mid cable island
+    { x: 680, y: 340, w: 140, h: 45 }, // mid pipe island
+    { x: 500, y: 160, w: 240, h: 40 }, // back pipe ledge
+  ]
 }
 
-/** Floor wrench pickup — south of spawn */
-export function createWrenchProp(): Interactable {
-  const footW = 28
-  const footH = 20
-  const spriteW = 40
-  const spriteH = 36
-  const footX = 560
-  const footY = 520
-
-  return {
-    id: 'wrench',
-    taskId: 'wrench',
-    foot: { x: footX, y: footY, w: footW, h: footH },
-    sprite: {
-      x: footX + (footW - spriteW) / 2,
-      y: footY + footH - spriteH,
-      w: spriteW,
-      h: spriteH,
-    },
-    color: '#7a8a9a',
-  }
+export function furnitureSolidsB(): AABB[] {
+  return [
+    { x: 60, y: 490, w: 170, h: 95 }, // cart / barrels
+    { x: 980, y: 490, w: 200, h: 100 }, // BR clutter
+    { x: 100, y: 250, w: 90, h: 70 }, // grimy wall base
+    { x: 360, y: 320, w: 70, h: 50 }, // lever station
+    { x: 1040, y: 250, w: 80, h: 55 }, // painting bay
+    { x: 520, y: 540, w: 200, h: 55 }, // bypass bank
+    { x: 500, y: 300, w: 180, h: 55 }, // mid platform
+    { x: 700, y: 360, w: 120, h: 40 }, // mid cables
+    { x: 480, y: 160, w: 240, h: 40 }, // back ledge
+  ]
 }
 
-/** Vase on pedestal — upper mid-left */
-export function createVaseProp(): Interactable {
-  const footW = 44
-  const footH = 32
-  const spriteW = 56
-  const spriteH = 110
-  const footX = 220
-  const footY = 280
-
-  return {
-    id: 'vase',
-    taskId: 'vase',
-    foot: { x: footX, y: footY, w: footW, h: footH },
-    sprite: {
-      x: footX + (footW - spriteW) / 2,
-      y: footY + footH - spriteH,
-      w: spriteW,
-      h: spriteH,
-    },
-    color: '#6b3d8f',
-  }
-}
-
-/** Locker — right side, grants fuse after keypad */
-export function createLockerProp(): Interactable {
-  const footW = 52
-  const footH = 36
-  const spriteW = 64
-  const spriteH = 120
-  const footX = 1050
-  const footY = 300
-
-  return {
-    id: 'locker',
-    taskId: 'locker',
-    foot: { x: footX, y: footY, w: footW, h: footH },
-    sprite: {
-      x: footX + (footW - spriteW) / 2,
-      y: footY + footH - spriteH,
-      w: spriteW,
-      h: spriteH,
-    },
-    color: '#3d5a4c',
-  }
-}
-
-/** Fuse / breaker panel — near lever */
-export function createFusePanelProp(): Interactable {
-  const footW = 48
-  const footH = 32
-  const spriteW = 60
-  const spriteH = 100
-  const footX = 480
-  const footY = 250
-
-  return {
-    id: 'fuse',
-    taskId: 'fuse',
-    foot: { x: footX, y: footY, w: footW, h: footH },
-    sprite: {
-      x: footX + (footW - spriteW) / 2,
-      y: footY + footH - spriteH,
-      w: spriteW,
-      h: spriteH,
-    },
-    color: '#b45309',
-  }
-}
-
-/** Gate bypass console — bottom center-ish */
-export function createBypassProp(): Interactable {
-  const footW = 70
-  const footH = 40
-  const spriteW = 90
-  const spriteH = 80
-  const footX = 700
-  const footY = 560
-
-  return {
-    id: 'bypass',
-    taskId: 'bypass',
-    foot: { x: footX, y: footY, w: footW, h: footH },
-    sprite: {
-      x: footX + (footW - spriteW) / 2,
-      y: footY + footH - spriteH,
-      w: spriteW,
-      h: spriteH,
-    },
-    color: '#1e3a5f',
-  }
-}
-
-/** Grimy wall (Pod B wipe) */
-export function createWallProp(): Interactable {
-  const footW = 80
-  const footH = 28
-  const spriteW = 100
-  const spriteH = 140
-  const footX = 200
-  const footY = 450
-
-  return {
-    id: 'wall',
-    taskId: 'wall',
-    foot: { x: footX, y: footY, w: footW, h: footH },
-    sprite: {
-      x: footX + (footW - spriteW) / 2,
-      y: footY + footH - spriteH,
-      w: spriteW,
-      h: spriteH,
-    },
-    color: '#5a5248',
-  }
-}
-
-/** Painting / keypad (Pod B) */
-export function createKeypadProp(): Interactable {
-  const footW = 40
-  const footH = 28
-  const spriteW = 72
-  const spriteH = 90
-  const footX = 1000
-  const footY = 480
-
-  return {
-    id: 'keypad',
-    taskId: 'keypad',
-    foot: { x: footX, y: footY, w: footW, h: footH },
-    sprite: {
-      x: footX + (footW - spriteW) / 2,
-      y: footY + footH - spriteH,
-      w: spriteW,
-      h: spriteH,
-    },
-    color: '#4a5568',
-  }
-}
-
-/** Floor rag pickup (Pod B) — near cart */
-export function createRagProp(): Interactable {
-  const footW = 24
-  const footH = 18
-  const spriteW = 36
-  const spriteH = 28
-  const footX = 320
-  const footY = 500
-
-  return {
-    id: 'rag',
-    taskId: 'rag',
-    foot: { x: footX, y: footY, w: footW, h: footH },
-    sprite: {
-      x: footX + (footW - spriteW) / 2,
-      y: footY + footH - spriteH,
-      w: spriteW,
-      h: spriteH,
-    },
-    color: '#c4b59a',
-  }
-}
-
-/** Cart clutter (Pod B, non-interact) */
-export function createCartProp(): Prop {
-  const footW = 70
-  const footH = 36
-  const spriteW = 90
-  const spriteH = 80
-  const footX = 280
-  const footY = 520
-
-  return {
-    id: 'cart',
-    foot: { x: footX, y: footY, w: footW, h: footH },
-    sprite: {
-      x: footX + (footW - spriteW) / 2,
-      y: footY + footH - spriteH,
-      w: spriteW,
-      h: spriteH,
-    },
-    color: '#6b7280',
-  }
-}
-
-/** Breaker box flavor (non-interact) */
-export function createBreakerProp(footX: number, footY: number): Prop {
-  const footW = 40
-  const footH = 28
-  const spriteW = 56
-  const spriteH = 72
-  return {
-    id: 'breaker',
-    foot: { x: footX, y: footY, w: footW, h: footH },
-    sprite: {
-      x: footX + (footW - spriteW) / 2,
-      y: footY + footH - spriteH,
-      w: spriteW,
-      h: spriteH,
-    },
-    color: '#374151',
-  }
-}
-
-export function createWorldSolids(props: readonly Prop[]): AABB[] {
-  return [...createWalls(), ...props.map((p) => p.foot)]
+export function createWorldSolids(
+  props: readonly Prop[],
+  extra: readonly AABB[] = [],
+): AABB[] {
+  return [...createWalls(), ...props.map((p) => p.foot), ...extra]
 }
 
 export type PodWorld = {
   pod: 'a' | 'b'
+  /** Hotspot props (invisible); used for prompts / pickup patches */
   props: Prop[]
   interactables: Interactable[]
   solids: AABB[]
   byId: Record<string, Interactable>
 }
 
+/**
+ * Hotspots aligned to baked plate art (no overlay sprites).
+ * Mid-room islands are collision-only in furnitureSolids*.
+ */
 export function createPodWorld(pod: 'a' | 'b'): PodWorld {
   if (pod === 'b') {
-    const lever = createLeverProp()
-    const cart = createCartProp()
-    const rag = createRagProp()
-    const wall = createWallProp()
-    const keypad = createKeypadProp()
-    const bypass = createBypassProp()
-    const breaker = createBreakerProp(1100, 200)
-    const interactables = [lever, rag, wall, keypad, bypass]
-    const props: Prop[] = [lever, cart, rag, wall, keypad, bypass, breaker]
+    const interactables = [
+      hotspot('lever', 'lever', 200, 300, 40, 30),
+      hotspot('rag', 'rag', 150, 500, 48, 36, 48),
+      hotspot('wall', 'wall', 100, 220, 90, 36, 120),
+      hotspot('keypad', 'keypad', 1050, 240, 48, 30, 100),
+      hotspot('bypass', 'bypass', 540, 580, 120, 40, 70),
+    ]
     const byId: Record<string, Interactable> = {}
     for (const item of interactables) byId[item.id] = item
     return {
       pod,
-      props,
+      props: interactables,
       interactables,
-      solids: createWorldSolids(props),
+      /** Collisions disabled for now — plate art only */
+      solids: [],
       byId,
     }
   }
 
-  const crate = createPlaceholderCrate()
-  const lever = createLeverProp()
-  const wrench = createWrenchProp()
-  const vase = createVaseProp()
-  const locker = createLockerProp()
-  const fuse = createFusePanelProp()
-  const bypass = createBypassProp()
-  const breaker = createBreakerProp(100, 200)
-  const interactables = [lever, wrench, vase, locker, fuse, bypass]
-  const props: Prop[] = [crate, lever, wrench, vase, locker, fuse, bypass, breaker]
+  const interactables = [
+    hotspot('lever', 'lever', 200, 300, 40, 30),
+    hotspot('wrench', 'wrench', 160, 480, 56, 40, 56),
+    hotspot('vase', 'vase', 200, 160, 56, 40, 130),
+    hotspot('locker', 'locker', 1080, 260, 56, 36, 120),
+    hotspot('fuse', 'fuse', 100, 240, 50, 34, 100),
+    hotspot('bypass', 'bypass', 540, 580, 120, 40, 70),
+  ]
   const byId: Record<string, Interactable> = {}
   for (const item of interactables) byId[item.id] = item
   return {
     pod,
-    props,
+    props: interactables,
     interactables,
-    solids: createWorldSolids(props),
+    solids: [],
     byId,
   }
 }
