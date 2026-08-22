@@ -272,6 +272,8 @@ export default function WorldView() {
           setPeerReady(false)
           setLocalReady(false)
           if (phaseRef.current === 'landing') {
+            // Clear server-side ready so a replacement joiner can't auto-start
+            if (wsRef.current) sendReady(wsRef.current, false)
             setLobbyStatus('Partner left')
           } else {
             breakMatch()

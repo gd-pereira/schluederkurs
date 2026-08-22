@@ -291,6 +291,7 @@ wss.on('connection', (ws) => {
     const room = rooms.get(membership.code)
     if (!room) return
     room.clients = room.clients.filter((c) => c.ws !== ws)
+    for (const c of room.clients) c.ready = false
     broadcast(room, {
       type: 'peerLeft',
       peers: room.clients.length,
