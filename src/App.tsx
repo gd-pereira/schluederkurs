@@ -6,7 +6,7 @@ export default function App() {
       <header className="text-center">
         <h1 className="text-xl font-semibold tracking-tight">Incompetent Chambers</h1>
         <p className="mt-1 text-sm text-neutral-400">
-          Lobby: Solo / Create / Join · WASD · E · Partner sim (solo) · L debug
+          Lobby: Solo / Create / Join · WASD · E · Partner sim (solo) · L dark · P place rect
         </p>
       </header>
       <div className="max-w-full overflow-auto">

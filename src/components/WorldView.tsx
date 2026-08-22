@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -48,8 +47,9 @@ import EscapeOverlay from './EscapeOverlay'
 import GateSlamOverlay from './GateSlamOverlay'
 import LobbyOverlay, { type LobbyMode } from './LobbyOverlay'
 import PartnerSim from './PartnerSim'
-import { renderPodProps } from './PodPropSprites'
+import PodPropSprites from './PodPropSprites'
 import PowerHud from './PowerHud'
+import PropPlaceTool from './PropPlaceTool'
 import RoomPlateLayers from './RoomPlateLayers'
 import TaskModal from './TaskModal'
 import BypassTask from './tasks/BypassTask'
@@ -95,7 +95,8 @@ export default function WorldView() {
     inputLocked: false,
     darkMode: false,
   })
-  const podWorld = useMemo(() => createPodWorld(pod), [pod])
+  // Recreate each render — layout constants are tiny and HMR must pick up pin tweaks
+  const podWorld = createPodWorld(pod)
   const solidsRef = useRef(podWorld.solids)
   solidsRef.current = podWorld.solids
   const interactablesRef = useRef<readonly Interactable[]>(
@@ -604,7 +605,7 @@ export default function WorldView() {
         >
           <RoomPlateLayers pod={pod} />
 
-          {renderPodProps(podWorld, flags)}
+          <PodPropSprites world={podWorld} flags={flags} />
 
           <div
             ref={ghostRef}
@@ -645,6 +646,8 @@ export default function WorldView() {
             data-on={facilityFlicker > 0 ? '1' : '0'}
             aria-hidden
           />
+
+          <PropPlaceTool />
 
           <PowerHud
             visible={flags.gridOnline}

@@ -35,6 +35,29 @@ function hotspot(
   }
 }
 
+/**
+ * Visible overlay prop: sprite = exact top-left + size on the 1280×720 plate.
+ * Foot is approximate (interact / Y-sort only).
+ */
+function overlay(
+  id: string,
+  taskId: string,
+  sprite: AABB,
+  foot?: Partial<AABB>,
+): Interactable {
+  const footW = foot?.w ?? Math.max(24, Math.round(sprite.w * 0.55))
+  const footH = foot?.h ?? 22
+  const footX = foot?.x ?? Math.round(sprite.x + (sprite.w - footW) / 2)
+  const footY = foot?.y ?? Math.round(sprite.y + sprite.h - footH)
+  return {
+    id,
+    taskId,
+    sprite,
+    foot: { x: footX, y: footY, w: footW, h: footH },
+    color: 'transparent',
+  }
+}
+
 /** Collision for plate-baked furniture / mid-room islands (Pod A) */
 export function furnitureSolidsA(): AABB[] {
   return [
@@ -108,8 +131,9 @@ export function createPodWorld(pod: 'a' | 'b'): PodWorld {
 
   const interactables = [
     hotspot('lever', 'lever', 200, 300, 40, 30),
-    hotspot('wrench', 'wrench', 160, 480, 56, 40, 56),
-    hotspot('vase', 'vase', 200, 160, 56, 40, 130),
+    // Pins from in-game P placer (top-left → bottom-right rects)
+    overlay('wrench', 'wrench', { x: 300, y: 418, w: 128, h: 58 }),
+    overlay('vase', 'vase', { x: 249, y: 111, w: 79, h: 45 }),
     hotspot('locker', 'locker', 1080, 260, 56, 36, 120),
     hotspot('fuse', 'fuse', 100, 240, 50, 34, 100),
     hotspot('bypass', 'bypass', 540, 580, 120, 40, 70),
