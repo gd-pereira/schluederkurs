@@ -1,5 +1,6 @@
-import { useEffect, useRef, type CSSProperties } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import {
+  BLACKOUT_HOLD_MS,
   FLASHLIGHT_RADIUS,
   PLAYER_SPRITE_H,
   PLAYER_SPRITE_W,
@@ -8,36 +9,100 @@ import {
   WORLD_W,
 } from '../game/constants'
 import { startGameLoop } from '../game/loop'
-import { createPlaceholderCrate, createWorldSolids } from '../game/world'
+import type { LoopControls, MatchPhase } from '../game/types'
+import {
+  createLeverProp,
+  createPlaceholderCrate,
+  createWorldSolids,
+} from '../game/world'
+import GateSlamOverlay from './GateSlamOverlay'
+import LobbyOverlay from './LobbyOverlay'
+import TaskModal from './TaskModal'
 
-const prop = createPlaceholderCrate()
-const solids = createWorldSolids([prop])
+const crate = createPlaceholderCrate()
+const lever = createLeverProp()
+const solids = createWorldSolids([crate, lever])
+const interactables = [lever] as const
 
 export default function WorldView() {
+  const [phase, setPhase] = useState<MatchPhase>('lobby')
+  const [openTaskId, setOpenTaskId] = useState<string | null>(null)
+  const [aiToast, setAiToast] = useState<string | null>(null)
+
   const worldRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<HTMLDivElement>(null)
   const propRef = useRef<HTMLDivElement>(null)
-  const lockedRef = useRef<HTMLParagraphElement>(null)
+  const leverRef = useRef<HTMLDivElement>(null)
+  const promptRef = useRef<HTMLDivElement>(null)
+  const controlsRef = useRef<LoopControls>({
+    phase: 'lobby',
+    inputLocked: false,
+    darkMode: false,
+  })
+  const phaseRef = useRef(phase)
+  const openTaskRef = useRef(openTaskId)
+
+  phaseRef.current = phase
+  openTaskRef.current = openTaskId
+
+  // Keep mutable controls in sync for the rAF loop
+  controlsRef.current.phase = phase
+  controlsRef.current.inputLocked = openTaskId !== null
+
+  const requestTask = useCallback((taskId: string) => {
+    if (phaseRef.current !== 'play') return
+    if (openTaskRef.current !== null) return
+    setOpenTaskId(taskId)
+  }, [])
+
+  const closeTask = useCallback(() => {
+    setOpenTaskId(null)
+  }, [])
+
+  const handleReady = useCallback(() => {
+    setPhase('gateSlam')
+  }, [])
+
+  const handleSlamDone = useCallback(() => {
+    controlsRef.current.darkMode = true
+    if (worldRef.current) worldRef.current.dataset.dark = '1'
+    setPhase('blackout')
+    setAiToast('Lights out. Try not to trip.')
+  }, [])
+
+  useEffect(() => {
+    if (phase !== 'blackout') return
+    const id = window.setTimeout(() => {
+      setPhase('play')
+      setAiToast(null)
+    }, BLACKOUT_HOLD_MS)
+    return () => window.clearTimeout(id)
+  }, [phase])
 
   useEffect(() => {
     const worldEl = worldRef.current
     const playerEl = playerRef.current
     const propEl = propRef.current
-    if (!worldEl || !playerEl || !propEl) return
+    const leverEl = leverRef.current
+    if (!worldEl || !playerEl || !propEl || !leverEl) return
 
-    const loop = startGameLoop(
-      {
+    const loop = startGameLoop({
+      handles: {
         worldEl,
         playerEl,
         propEl,
-        lockedEl: lockedRef.current,
+        leverEl,
+        promptEl: promptRef.current,
       },
       solids,
-      prop,
-    )
+      crate,
+      interactables,
+      controls: controlsRef.current,
+      onRequestTask: requestTask,
+    })
 
     return () => loop.stop()
-  }, [])
+  }, [requestTask])
 
   return (
     <div className="relative" style={{ width: WORLD_W, height: WORLD_H }}>
@@ -55,7 +120,6 @@ export default function WorldView() {
           } as CSSProperties
         }
       >
-        {/* Wall visuals (match collision thickness) */}
         <div
           className="pointer-events-none absolute inset-x-0 top-0 bg-neutral-700"
           style={{ height: WALL_THICKNESS }}
@@ -73,7 +137,6 @@ export default function WorldView() {
           style={{ width: WALL_THICKNESS }}
         />
 
-        {/* Floor hint grid */}
         <div
           className="pointer-events-none absolute inset-0 opacity-30"
           style={{
@@ -91,13 +154,27 @@ export default function WorldView() {
           ref={propRef}
           className="absolute left-0 top-0 will-change-transform"
           style={{
-            width: prop.sprite.w,
-            height: prop.sprite.h,
-            transform: `translate(${prop.sprite.x}px, ${prop.sprite.y}px)`,
-            backgroundColor: prop.color,
+            width: crate.sprite.w,
+            height: crate.sprite.h,
+            transform: `translate(${crate.sprite.x}px, ${crate.sprite.y}px)`,
+            backgroundColor: crate.color,
             boxShadow: 'inset 0 0 0 2px #1a1208',
           }}
           aria-hidden
+        />
+
+        <div
+          ref={leverRef}
+          className="absolute left-0 top-0 will-change-transform"
+          style={{
+            width: lever.sprite.w,
+            height: lever.sprite.h,
+            transform: `translate(${lever.sprite.x}px, ${lever.sprite.y}px)`,
+            backgroundColor: lever.color,
+            boxShadow: 'inset 0 0 0 2px #3a1808',
+            borderRadius: 4,
+          }}
+          aria-label="Lever"
         />
 
         <div
@@ -113,14 +190,31 @@ export default function WorldView() {
           aria-label="Player"
         />
 
-        {/* CSS flashlight: full dark when data-dark=1; hole follows --fx/--fy from rAF */}
-        <div className="flashlight-overlay" aria-hidden />
-      </div>
+        <div
+          ref={promptRef}
+          className="pointer-events-none absolute left-0 top-0 z-[5000] text-sm font-bold tracking-wide text-amber-300 opacity-0 will-change-transform"
+          style={{ textShadow: '0 1px 2px #000' }}
+          aria-hidden
+        />
 
-      <p
-        ref={lockedRef}
-        className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 text-sm font-semibold tracking-wide text-amber-400"
-      />
+        <div className="flashlight-overlay" aria-hidden />
+
+        {phase === 'lobby' && <LobbyOverlay onReady={handleReady} />}
+        {phase === 'gateSlam' && <GateSlamOverlay onDone={handleSlamDone} />}
+
+        {aiToast && (
+          <p className="pointer-events-none absolute bottom-8 left-1/2 z-[10070] -translate-x-1/2 rounded bg-black/80 px-4 py-2 text-sm text-amber-200">
+            {aiToast}
+          </p>
+        )}
+
+        {openTaskId !== null && (
+          <TaskModal
+            title={openTaskId === 'lever' ? 'Local lever' : 'Task'}
+            onClose={closeTask}
+          />
+        )}
+      </div>
     </div>
   )
 }

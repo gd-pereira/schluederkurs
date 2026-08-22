@@ -1,5 +1,5 @@
 import { WALL_THICKNESS, WORLD_H, WORLD_W } from './constants'
-import type { AABB, Prop } from './types'
+import type { AABB, Interactable, Prop } from './types'
 
 export function createWalls(): AABB[] {
   const t = WALL_THICKNESS
@@ -30,6 +30,29 @@ export function createPlaceholderCrate(): Prop {
       h: spriteH,
     },
     color: '#8b6914',
+  }
+}
+
+/** Local lever stub — left of center, distinct from crate */
+export function createLeverProp(): Interactable {
+  const footW = 36
+  const footH = 28
+  const spriteW = 48
+  const spriteH = 100
+  const footX = 380
+  const footY = 420
+
+  return {
+    id: 'lever',
+    taskId: 'lever',
+    foot: { x: footX, y: footY, w: footW, h: footH },
+    sprite: {
+      x: footX + (footW - spriteW) / 2,
+      y: footY + footH - spriteH,
+      w: spriteW,
+      h: spriteH,
+    },
+    color: '#c45c26',
   }
 }
 

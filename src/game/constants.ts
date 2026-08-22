@@ -17,3 +17,12 @@ export const PLAYER_START_Y = WORLD_H / 2 - PLAYER_FOOT_H / 2
 
 /** Soft-edge radius of the flashlight hole (px) */
 export const FLASHLIGHT_RADIUS = 168
+
+/** Interact radius around footprints (px) */
+export const INTERACT_RADIUS = 80
+
+/** Gate slam overlay duration */
+export const GATE_SLAM_MS = 900
+
+/** Hold after blackout before play (AI toast window) */
+export const BLACKOUT_HOLD_MS = 400

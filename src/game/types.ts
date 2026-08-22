@@ -20,3 +20,17 @@ export type Prop = {
   foot: AABB
   color: string
 }
+
+export type MatchPhase = 'lobby' | 'gateSlam' | 'blackout' | 'play'
+
+/** Prop that can open a task modal when in range */
+export type Interactable = Prop & {
+  taskId: string
+}
+
+/** Shared mutable controls read by the rAF loop (written by React) */
+export type LoopControls = {
+  phase: MatchPhase
+  inputLocked: boolean
+  darkMode: boolean
+}

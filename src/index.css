@@ -32,3 +32,72 @@ body {
 .pod-world[data-dark='1'] .flashlight-overlay {
   opacity: 1;
 }
+
+/* Blast gate slam — left/right panels meet in the middle */
+.gate-slam-panel {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 52%;
+  background: linear-gradient(180deg, #2a3038 0%, #12151a 55%, #0a0c0f 100%);
+  box-shadow: inset 0 0 0 3px #4a5560;
+}
+
+.gate-slam-panel--left {
+  left: 0;
+  transform: translateX(-100%);
+  animation: gate-slam-in-left 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.gate-slam-panel--right {
+  right: 0;
+  transform: translateX(100%);
+  animation: gate-slam-in-right 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.gate-slam-label {
+  opacity: 0;
+  animation: gate-slam-label 0.9s ease-out forwards;
+  z-index: 1;
+}
+
+@keyframes gate-slam-in-left {
+  0% {
+    transform: translateX(-100%);
+  }
+  70% {
+    transform: translateX(0);
+  }
+  85% {
+    transform: translateX(2%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes gate-slam-in-right {
+  0% {
+    transform: translateX(100%);
+  }
+  70% {
+    transform: translateX(0);
+  }
+  85% {
+    transform: translateX(-2%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes gate-slam-label {
+  0%,
+  35% {
+    opacity: 0;
+  }
+  50%,
+  100% {
+    opacity: 1;
+  }
+}

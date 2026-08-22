@@ -1,4 +1,5 @@
 import {
+  INTERACT_RADIUS,
   MOVE_SPEED,
   PLAYER_FOOT_H,
   PLAYER_FOOT_W,
@@ -8,13 +9,24 @@ import {
   PLAYER_START_Y,
 } from './constants'
 import { footBottom, resolveMove } from './collision'
-import type { AABB, Prop } from './types'
+import { findNearestInteractable } from './interact'
+import type { AABB, Interactable, LoopControls, Prop } from './types'
 
 export type LoopHandles = {
   playerEl: HTMLElement
   propEl: HTMLElement
+  leverEl: HTMLElement
   worldEl: HTMLElement
-  lockedEl: HTMLElement | null
+  promptEl: HTMLElement | null
+}
+
+export type LoopOptions = {
+  handles: LoopHandles
+  solids: readonly AABB[]
+  crate: Prop
+  interactables: readonly Interactable[]
+  controls: LoopControls
+  onRequestTask: (taskId: string) => void
 }
 
 export type GameLoop = {
@@ -28,15 +40,12 @@ function spriteTopLeftFromFoot(foot: AABB): { x: number; y: number } {
   }
 }
 
-export function startGameLoop(
-  handles: LoopHandles,
-  solids: readonly AABB[],
-  prop: Prop,
-): GameLoop {
+export function startGameLoop(options: LoopOptions): GameLoop {
+  const { handles, solids, crate, interactables, controls, onRequestTask } =
+    options
+
   const keys = new Set<string>()
-  let inputLocked = false
-  /** Temp debug: L toggles facility blackout + flashlight */
-  let darkMode = false
+  let nearestTaskId: string | null = null
   let rafId = 0
   let lastTime = performance.now()
 
@@ -47,15 +56,17 @@ export function startGameLoop(
     h: PLAYER_FOOT_H,
   }
 
-  const propZ = Math.floor(footBottom(prop.foot))
-  handles.propEl.style.zIndex = String(propZ)
+  handles.propEl.style.zIndex = String(Math.floor(footBottom(crate.foot)))
+  const lever = interactables.find((i) => i.id === 'lever')
+  if (lever) {
+    handles.leverEl.style.zIndex = String(Math.floor(footBottom(lever.foot)))
+  }
 
   function writePlayerDom() {
     const pos = spriteTopLeftFromFoot(foot)
     handles.playerEl.style.transform = `translate(${pos.x}px, ${pos.y}px)`
     handles.playerEl.style.zIndex = String(Math.floor(footBottom(foot)))
 
-    // Flashlight center = player torso (sprite mid), updated in rAF — not React state
     const fx = pos.x + PLAYER_SPRITE_W / 2
     const fy = pos.y + PLAYER_SPRITE_H * 0.4
     handles.worldEl.style.setProperty('--fx', `${fx}px`)
@@ -63,27 +74,50 @@ export function startGameLoop(
   }
 
   function writeDarkMode() {
-    handles.worldEl.dataset.dark = darkMode ? '1' : '0'
+    handles.worldEl.dataset.dark = controls.darkMode ? '1' : '0'
   }
 
-  function writeLockedHint() {
-    if (!handles.lockedEl) return
-    handles.lockedEl.textContent = inputLocked ? 'INPUT LOCKED (F)' : ''
+  function writePrompt(target: Interactable | null) {
+    const el = handles.promptEl
+    if (!el) return
+
+    if (!target) {
+      nearestTaskId = null
+      el.style.opacity = '0'
+      el.textContent = ''
+      return
+    }
+
+    nearestTaskId = target.taskId
+    const cx = target.sprite.x + target.sprite.w / 2
+    const top = target.sprite.y - 28
+    el.textContent = '[E]'
+    el.style.opacity = '1'
+    el.style.transform = `translate(${cx}px, ${top}px) translate(-50%, 0)`
   }
 
   function onKeyDown(e: KeyboardEvent) {
     if (e.repeat) return
     const key = e.key.toLowerCase()
-    if (key === 'f') {
-      inputLocked = !inputLocked
-      writeLockedHint()
-      return
-    }
+
     if (key === 'l') {
-      darkMode = !darkMode
+      controls.darkMode = !controls.darkMode
       writeDarkMode()
       return
     }
+
+    if (key === 'e') {
+      if (
+        controls.phase === 'play' &&
+        !controls.inputLocked &&
+        nearestTaskId
+      ) {
+        onRequestTask(nearestTaskId)
+      }
+      e.preventDefault()
+      return
+    }
+
     if (key === 'w' || key === 'a' || key === 's' || key === 'd') {
       keys.add(key)
       e.preventDefault()
@@ -99,7 +133,9 @@ export function startGameLoop(
     const dt = Math.min((now - lastTime) / 1000, 0.05)
     lastTime = now
 
-    if (!inputLocked) {
+    const canMove = controls.phase === 'play' && !controls.inputLocked
+
+    if (canMove) {
       let mx = 0
       let my = 0
       if (keys.has('a')) mx -= 1
@@ -117,13 +153,22 @@ export function startGameLoop(
       }
     }
 
+    if (controls.phase === 'play' && !controls.inputLocked) {
+      writePrompt(
+        findNearestInteractable(foot, interactables, INTERACT_RADIUS),
+      )
+    } else {
+      writePrompt(null)
+    }
+
+    writeDarkMode()
     writePlayerDom()
     rafId = requestAnimationFrame(tick)
   }
 
   writePlayerDom()
   writeDarkMode()
-  writeLockedHint()
+  writePrompt(null)
   window.addEventListener('keydown', onKeyDown)
   window.addEventListener('keyup', onKeyUp)
   rafId = requestAnimationFrame(tick)
