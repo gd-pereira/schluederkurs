@@ -71,6 +71,7 @@ export default function WorldView() {
   const [flags, setFlags] = useState<MatchFlags>(() => createFlags())
   const [syncProgress, setSyncProgress] = useState(0)
   const [matchBroken, setMatchBroken] = useState(false)
+  const [facilityFlicker, setFacilityFlicker] = useState(0)
 
   const [lobbyMode, setLobbyMode] = useState<LobbyMode>(
     forceSolo ? 'solo' : 'pick',
@@ -411,14 +412,20 @@ export default function WorldView() {
     return () => window.clearInterval(id)
   }, [flags.bypassA, flags.bypassB, flags.fuseInstalled, flags.escaped, dispatch])
 
+  const triggerFacilityFlicker = useCallback(() => {
+    setFacilityFlicker((n) => n + 1)
+  }, [])
+
   const completeLocalLever = useCallback(() => {
     dispatch({ type: 'lever', side: podRef.current })
+    triggerFacilityFlicker()
     setOpenTaskId(null)
-  }, [dispatch])
+  }, [dispatch, triggerFacilityFlicker])
 
   const completePartnerLever = useCallback(() => {
     dispatch({ type: 'lever', side: 'b' })
-  }, [dispatch])
+    triggerFacilityFlicker()
+  }, [dispatch, triggerFacilityFlicker])
 
   const completePartnerWipe = useCallback(() => {
     dispatch({ type: 'wallWipe' })
@@ -452,17 +459,20 @@ export default function WorldView() {
 
   const completeWrench = useCallback(() => {
     dispatch({ type: 'wrench' })
+    triggerFacilityFlicker()
     setOpenTaskId(null)
-  }, [dispatch])
+  }, [dispatch, triggerFacilityFlicker])
 
   const completeRag = useCallback(() => {
     dispatch({ type: 'rag' })
+    triggerFacilityFlicker()
     setOpenTaskId(null)
-  }, [dispatch])
+  }, [dispatch, triggerFacilityFlicker])
 
   const completeVaseSmash = useCallback(() => {
     dispatch({ type: 'vaseSmash' })
-  }, [dispatch])
+    triggerFacilityFlicker()
+  }, [dispatch, triggerFacilityFlicker])
 
   const completeLocker = useCallback(() => {
     dispatch({ type: 'fuseLoot' })
@@ -594,7 +604,7 @@ export default function WorldView() {
         >
           <RoomPlateLayers pod={pod} />
 
-          {renderPodProps(podWorld, flags, pod)}
+          {renderPodProps(podWorld, flags)}
 
           <div
             ref={ghostRef}
@@ -629,6 +639,12 @@ export default function WorldView() {
           />
 
           <div className="flashlight-overlay" aria-hidden />
+          <div
+            key={facilityFlicker}
+            className="facility-flicker"
+            data-on={facilityFlicker > 0 ? '1' : '0'}
+            aria-hidden
+          />
 
           <PowerHud
             visible={flags.gridOnline}

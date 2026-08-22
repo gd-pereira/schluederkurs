@@ -33,6 +33,38 @@ body {
   opacity: 1;
 }
 
+/* Brief facility flicker — opacity only (compositor-friendly) */
+.facility-flicker {
+  position: absolute;
+  inset: 0;
+  z-index: 10020;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.82);
+  opacity: 0;
+}
+
+.facility-flicker[data-on='1'] {
+  animation: facility-flicker-pulse 420ms ease-in-out;
+}
+
+@keyframes facility-flicker-pulse {
+  0% {
+    opacity: 0;
+  }
+  18% {
+    opacity: 0.92;
+  }
+  40% {
+    opacity: 0.35;
+  }
+  58% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 /* Blast gate slam — left/right panels meet in the middle */
 .gate-slam-panel {
   position: absolute;

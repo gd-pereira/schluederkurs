@@ -4,7 +4,8 @@ import { footBottom } from '../game/collision'
 import type { MatchFlags } from '../game/matchFlags'
 import type { Prop } from '../game/types'
 import type { PodWorld } from '../game/world'
-import type { PodId } from '../net/matchEvents'
+
+const FADE_MS = 380
 
 function OverlaySprite({
   url,
@@ -16,10 +17,11 @@ function OverlaySprite({
   opacity: number
 }) {
   const ready = useAssetReady(url)
-  if (!ready || opacity <= 0) return null
+  if (!ready) return null
+  // Stay mounted at opacity 0 so CSS can crossfade (compositor-only)
   return (
     <div
-      className="pointer-events-none absolute left-0 top-0"
+      className="pointer-events-none absolute left-0 top-0 will-change-[opacity]"
       style={{
         width: prop.sprite.w,
         height: prop.sprite.h,
@@ -29,7 +31,7 @@ function OverlaySprite({
         backgroundPosition: 'center bottom',
         backgroundRepeat: 'no-repeat',
         opacity,
-        transition: 'opacity 200ms ease-out',
+        transition: `opacity ${FADE_MS}ms ease-out`,
         zIndex: Math.floor(footBottom(prop.foot)),
       }}
       aria-hidden
@@ -38,14 +40,10 @@ function OverlaySprite({
 }
 
 /**
- * Transparent overlays for changeable props only.
- * Plate holds empty furniture; wrench/rag/vase sit on top.
+ * Transparent overlays for changeable props (wrench / rag / vase).
+ * Lever stays baked into the plate — no overlay swap.
  */
-export function renderPodProps(
-  world: PodWorld,
-  flags: MatchFlags,
-  _pod: PodId,
-) {
+export function renderPodProps(world: PodWorld, flags: MatchFlags) {
   return world.props.map((prop) => {
     if (prop.id === 'wrench') {
       const url = propAssetUrl('wrench')
@@ -94,7 +92,6 @@ export function renderPodProps(
       )
     }
 
-    // Lever/locker/fuse/bypass/wall/keypad: baked into plate — invisible hotspot only
     return (
       <div
         key={prop.id}
