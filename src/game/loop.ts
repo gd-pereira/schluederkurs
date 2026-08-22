@@ -113,6 +113,15 @@ export function startGameLoop(options: LoopOptions): GameLoop {
 
   function onKeyDown(e: KeyboardEvent) {
     if (e.repeat) return
+    const target = e.target as HTMLElement | null
+    if (
+      target &&
+      (target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable)
+    ) {
+      return
+    }
     const key = e.key.toLowerCase()
 
     if (key === 'l') {

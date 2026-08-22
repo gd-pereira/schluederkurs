@@ -7,6 +7,11 @@ body,
   min-height: 100%;
 }
 
+html {
+  /* Keep game frame centered when vertical scrollbar appears/disappears */
+  scrollbar-gutter: stable;
+}
+
 body {
   min-height: 100svh;
   overflow-x: hidden;

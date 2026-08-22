@@ -77,7 +77,7 @@ export default function PartnerSim(props: PartnerSimProps) {
   const showYield = partnerReserve > 0
 
   return (
-    <div className="mt-3 flex flex-col items-center gap-2">
+    <div className="flex flex-col items-center gap-2">
       <div className="flex flex-wrap items-center justify-center gap-2">
         <span className="text-xs uppercase tracking-wider text-neutral-500">
           Solo sim

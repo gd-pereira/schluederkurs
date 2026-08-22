@@ -587,8 +587,11 @@ export default function WorldView() {
   const reservePartner = pod === 'b' ? flags.reserveA : flags.reserveB
 
   return (
-    <div>
-      <div className="relative" style={{ width: WORLD_W, height: WORLD_H }}>
+    <div className="flex w-fit max-w-full flex-col items-center">
+      <div
+        className="relative shrink-0"
+        style={{ width: WORLD_W, height: WORLD_H }}
+      >
         <div
           ref={worldRef}
           className="pod-world relative overflow-hidden rounded-sm border border-neutral-700 bg-neutral-900"
@@ -807,25 +810,28 @@ export default function WorldView() {
         </div>
       </div>
 
-      <PartnerSim
-        enabled={showPartnerSim}
-        partnerLeverDone={flags.leverB}
-        onPartnerLever={completePartnerLever}
-        gridOn={flags.gridOnline}
-        wallWiped={flags.wallWiped}
-        onPartnerWipe={completePartnerWipe}
-        codeKnown={flags.codeKnown}
-        keypadDone={flags.keypadDone}
-        partnerKeypadOpen={flags.reserveB > 0 && !flags.keypadDone}
-        onPartnerKeypadOpen={completePartnerKeypadOpen}
-        onPartnerKeypadFinish={completePartnerKeypadFinish}
-        partnerReserve={flags.reserveB}
-        onPartnerYield={completePartnerYield}
-        fuseInstalled={flags.fuseInstalled}
-        partnerBypassHeld={flags.bypassB}
-        onPartnerBypassHold={setPartnerBypass}
-        escaped={flags.escaped}
-      />
+      {/* Fixed chrome height so solo controls outside the pod never nudge the 1280×720 frame */}
+      <div className="mt-3 flex min-h-20 w-full shrink-0 flex-col items-center justify-start">
+        <PartnerSim
+          enabled={showPartnerSim}
+          partnerLeverDone={flags.leverB}
+          onPartnerLever={completePartnerLever}
+          gridOn={flags.gridOnline}
+          wallWiped={flags.wallWiped}
+          onPartnerWipe={completePartnerWipe}
+          codeKnown={flags.codeKnown}
+          keypadDone={flags.keypadDone}
+          partnerKeypadOpen={flags.reserveB > 0 && !flags.keypadDone}
+          onPartnerKeypadOpen={completePartnerKeypadOpen}
+          onPartnerKeypadFinish={completePartnerKeypadFinish}
+          partnerReserve={flags.reserveB}
+          onPartnerYield={completePartnerYield}
+          fuseInstalled={flags.fuseInstalled}
+          partnerBypassHeld={flags.bypassB}
+          onPartnerBypassHold={setPartnerBypass}
+          escaped={flags.escaped}
+        />
+      </div>
     </div>
   )
 }
