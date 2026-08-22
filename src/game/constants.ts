@@ -26,3 +26,10 @@ export const GATE_SLAM_MS = 900
 
 /** Hold after blackout before play (AI toast window) */
 export const BLACKOUT_HOLD_MS = 400
+
+/** Pod B keypad reserve while open */
+export const KEYPAD_RESERVE = 80
+
+/** Lights hysteresis thresholds (free power %) */
+export const LIGHT_OFF_BELOW = 25
+export const LIGHT_ON_ABOVE = 35

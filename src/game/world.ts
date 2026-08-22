@@ -102,6 +102,29 @@ export function createVaseProp(): Interactable {
   }
 }
 
+/** Locker — right side, grants fuse after keypad */
+export function createLockerProp(): Interactable {
+  const footW = 52
+  const footH = 36
+  const spriteW = 64
+  const spriteH = 120
+  const footX = 1050
+  const footY = 300
+
+  return {
+    id: 'locker',
+    taskId: 'locker',
+    foot: { x: footX, y: footY, w: footW, h: footH },
+    sprite: {
+      x: footX + (footW - spriteW) / 2,
+      y: footY + footH - spriteH,
+      w: spriteW,
+      h: spriteH,
+    },
+    color: '#3d5a4c',
+  }
+}
+
 export function createWorldSolids(props: readonly Prop[]): AABB[] {
   return [...createWalls(), ...props.map((p) => p.foot)]
 }

@@ -14,6 +14,10 @@ import {
   activeInteractables,
   createFlags,
   effectiveDark,
+  freePower,
+  withFuse,
+  withKeypadDone,
+  withKeypadReserve,
   withLeverPulled,
   withVaseSmashed,
   withWallWiped,
@@ -23,6 +27,7 @@ import {
 import type { Interactable, LoopControls, MatchPhase } from '../game/types'
 import {
   createLeverProp,
+  createLockerProp,
   createPlaceholderCrate,
   createVaseProp,
   createWorldSolids,
@@ -34,6 +39,7 @@ import PartnerSim from './PartnerSim'
 import PowerHud from './PowerHud'
 import TaskModal from './TaskModal'
 import LeverTask from './tasks/LeverTask'
+import LockerTask from './tasks/LockerTask'
 import VaseTask from './tasks/VaseTask'
 import WrenchTask from './tasks/WrenchTask'
 
@@ -41,8 +47,9 @@ const crate = createPlaceholderCrate()
 const lever = createLeverProp()
 const wrench = createWrenchProp()
 const vase = createVaseProp()
-const solids = createWorldSolids([crate, lever, wrench, vase])
-const interactProps = { lever, wrench, vase }
+const locker = createLockerProp()
+const solids = createWorldSolids([crate, lever, wrench, vase, locker])
+const interactProps = { lever, wrench, vase, locker }
 
 export default function WorldView() {
   const [phase, setPhase] = useState<MatchPhase>('lobby')
@@ -69,6 +76,7 @@ export default function WorldView() {
   const lockdownStartedRef = useRef(false)
   const sawGridToast = useRef(false)
   const sawCodeToast = useRef(false)
+  const sawFuseToast = useRef(false)
 
   phaseRef.current = phase
   openTaskRef.current = openTaskId
@@ -95,6 +103,7 @@ export default function WorldView() {
     if (taskId === 'lever' && f.leverA) return
     if (taskId === 'wrench' && f.hasWrench) return
     if (taskId === 'vase' && f.vaseSmashed) return
+    if (taskId === 'locker' && f.hasFuse) return
     setOpenTaskId(taskId)
   }, [])
 
@@ -118,12 +127,12 @@ export default function WorldView() {
   )
 
   useEffect(() => {
-    if (!flags.lightsOn || sawGridToast.current) return
+    if (!flags.gridOnline || sawGridToast.current) return
     sawGridToast.current = true
     setAiToast("Grid online. Don't waste it.")
     const id = window.setTimeout(() => setAiToast(null), 2000)
     return () => window.clearTimeout(id)
-  }, [flags.lightsOn])
+  }, [flags.gridOnline])
 
   useEffect(() => {
     if (!flags.codeKnown || sawCodeToast.current) return
@@ -132,6 +141,14 @@ export default function WorldView() {
     const id = window.setTimeout(() => setAiToast(null), 2500)
     return () => window.clearTimeout(id)
   }, [flags.codeKnown])
+
+  useEffect(() => {
+    if (!flags.hasFuse || sawFuseToast.current) return
+    sawFuseToast.current = true
+    setAiToast("Fuse acquired. Don't drop it.")
+    const id = window.setTimeout(() => setAiToast(null), 2500)
+    return () => window.clearTimeout(id)
+  }, [flags.hasFuse])
 
   const completeLocalLever = useCallback(() => {
     applyFlags((prev) => withLeverPulled(prev, 'a'))
@@ -146,6 +163,14 @@ export default function WorldView() {
     applyFlags((prev) => withWallWiped(prev))
   }, [applyFlags])
 
+  const completePartnerKeypadOpen = useCallback(() => {
+    applyFlags((prev) => withKeypadReserve(prev))
+  }, [applyFlags])
+
+  const completePartnerKeypadFinish = useCallback(() => {
+    applyFlags((prev) => withKeypadDone(prev))
+  }, [applyFlags])
+
   const completeWrench = useCallback(() => {
     applyFlags((prev) => withWrench(prev))
     setOpenTaskId(null)
@@ -153,6 +178,11 @@ export default function WorldView() {
 
   const completeVaseSmash = useCallback(() => {
     applyFlags((prev) => withVaseSmashed(prev))
+  }, [applyFlags])
+
+  const completeLocker = useCallback(() => {
+    applyFlags((prev) => withFuse(prev))
+    setOpenTaskId(null)
   }, [applyFlags])
 
   const toggleDebugDark = useCallback(() => {
@@ -208,6 +238,8 @@ export default function WorldView() {
 
     return () => loop.stop()
   }, [requestTask, toggleDebugDark])
+
+  const free = freePower(flags)
 
   return (
     <div>
@@ -318,6 +350,21 @@ export default function WorldView() {
           />
 
           <div
+            className="absolute left-0 top-0 will-change-transform"
+            style={{
+              width: locker.sprite.w,
+              height: locker.sprite.h,
+              transform: `translate(${locker.sprite.x}px, ${locker.sprite.y}px)`,
+              backgroundColor: flags.hasFuse ? '#2a3a32' : locker.color,
+              boxShadow: 'inset 0 0 0 2px #1a2820',
+              borderRadius: 4,
+              opacity: flags.hasFuse ? 0.55 : 1,
+              zIndex: Math.floor(footBottom(locker.foot)),
+            }}
+            aria-label="Locker"
+          />
+
+          <div
             ref={playerRef}
             className="absolute left-0 top-0 will-change-transform"
             style={{
@@ -339,7 +386,11 @@ export default function WorldView() {
 
           <div className="flashlight-overlay" aria-hidden />
 
-          <PowerHud visible={flags.lightsOn} />
+          <PowerHud
+            visible={flags.gridOnline}
+            free={free}
+            reservePartner={flags.reserveB}
+          />
 
           {phase === 'lobby' && <LobbyOverlay onReady={handleReady} />}
           {phase === 'gateSlam' && <GateSlamOverlay onDone={handleSlamDone} />}
@@ -369,10 +420,16 @@ export default function WorldView() {
               />
             </TaskModal>
           )}
+          {openTaskId === 'locker' && (
+            <TaskModal title="Locker" onClose={closeTask}>
+              <LockerTask onComplete={completeLocker} />
+            </TaskModal>
+          )}
           {openTaskId !== null &&
             openTaskId !== 'lever' &&
             openTaskId !== 'wrench' &&
-            openTaskId !== 'vase' && (
+            openTaskId !== 'vase' &&
+            openTaskId !== 'locker' && (
               <TaskModal title="Task" onClose={closeTask} />
             )}
         </div>
@@ -382,9 +439,14 @@ export default function WorldView() {
         enabled={phase === 'play'}
         partnerLeverDone={flags.leverB}
         onPartnerLever={completePartnerLever}
-        gridOn={flags.lightsOn}
+        gridOn={flags.gridOnline}
         wallWiped={flags.wallWiped}
         onPartnerWipe={completePartnerWipe}
+        codeKnown={flags.codeKnown}
+        keypadDone={flags.keypadDone}
+        partnerKeypadOpen={flags.reserveB > 0 && !flags.keypadDone}
+        onPartnerKeypadOpen={completePartnerKeypadOpen}
+        onPartnerKeypadFinish={completePartnerKeypadFinish}
       />
     </div>
   )
