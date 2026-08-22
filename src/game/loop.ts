@@ -24,7 +24,10 @@ export type LoopOptions = {
   handles: LoopHandles
   solids: readonly AABB[]
   crate: Prop
-  interactables: readonly Interactable[]
+  /** Mutable list — WorldView clears lever after local pull */
+  interactablesRef: { current: readonly Interactable[] }
+  /** Optional: L toggles debug dark via React instead of flipping darkMode directly */
+  onToggleDebugDark?: () => void
   controls: LoopControls
   onRequestTask: (taskId: string) => void
 }
@@ -41,8 +44,15 @@ function spriteTopLeftFromFoot(foot: AABB): { x: number; y: number } {
 }
 
 export function startGameLoop(options: LoopOptions): GameLoop {
-  const { handles, solids, crate, interactables, controls, onRequestTask } =
-    options
+  const {
+    handles,
+    solids,
+    crate,
+    interactablesRef,
+    controls,
+    onRequestTask,
+    onToggleDebugDark,
+  } = options
 
   const keys = new Set<string>()
   let nearestTaskId: string | null = null
@@ -57,9 +67,10 @@ export function startGameLoop(options: LoopOptions): GameLoop {
   }
 
   handles.propEl.style.zIndex = String(Math.floor(footBottom(crate.foot)))
-  const lever = interactables.find((i) => i.id === 'lever')
-  if (lever) {
-    handles.leverEl.style.zIndex = String(Math.floor(footBottom(lever.foot)))
+  // Lever sprite z-index from initial world prop (may leave interactables)
+  const leverFoot = interactablesRef.current.find((i) => i.id === 'lever')
+  if (leverFoot) {
+    handles.leverEl.style.zIndex = String(Math.floor(footBottom(leverFoot.foot)))
   }
 
   function writePlayerDom() {
@@ -101,8 +112,12 @@ export function startGameLoop(options: LoopOptions): GameLoop {
     const key = e.key.toLowerCase()
 
     if (key === 'l') {
-      controls.darkMode = !controls.darkMode
-      writeDarkMode()
+      if (onToggleDebugDark) {
+        onToggleDebugDark()
+      } else {
+        controls.darkMode = !controls.darkMode
+        writeDarkMode()
+      }
       return
     }
 
@@ -155,7 +170,11 @@ export function startGameLoop(options: LoopOptions): GameLoop {
 
     if (controls.phase === 'play' && !controls.inputLocked) {
       writePrompt(
-        findNearestInteractable(foot, interactables, INTERACT_RADIUS),
+        findNearestInteractable(
+          foot,
+          interactablesRef.current,
+          INTERACT_RADIUS,
+        ),
       )
     } else {
       writePrompt(null)

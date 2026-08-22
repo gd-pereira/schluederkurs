@@ -1,13 +1,15 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 
 type TaskModalProps = {
   title?: string
   onClose: () => void
+  children?: ReactNode
 }
 
 export default function TaskModal({
   title = 'Task',
   onClose,
+  children,
 }: TaskModalProps) {
   const closeRef = useRef<HTMLButtonElement>(null)
 
@@ -46,10 +48,14 @@ export default function TaskModal({
             Close
           </button>
         </div>
-        <p className="text-sm leading-relaxed text-neutral-700">
-          Placeholder — wiring comes later.
-        </p>
-        <p className="mt-3 text-xs text-neutral-500">Esc to close</p>
+        {children ?? (
+          <>
+            <p className="text-sm leading-relaxed text-neutral-700">
+              Placeholder — wiring comes later.
+            </p>
+            <p className="mt-3 text-xs text-neutral-500">Esc to close</p>
+          </>
+        )}
       </div>
     </div>
   )

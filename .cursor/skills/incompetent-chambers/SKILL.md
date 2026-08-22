@@ -1,7 +1,7 @@
 ---
 name: incompetent-chambers
 description: >-
-  Locked design and engineering rules for Incompetent Chambers / Project Synapse —
+  Locked design and engineering rules for Incompetent Chambers —
   asymmetrical 2-player co-op escape room (Vite + React + Tailwind, DOM 2.5D,
   WebSocket on deplo.io). Use when building game features, tasks, power grid,
   overworld movement, assets, multiplayer sync, or hackathon scope decisions.
