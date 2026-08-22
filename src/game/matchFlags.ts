@@ -16,6 +16,7 @@ export type MatchFlags = {
   /** L key: force dark even when lights on */
   debugForceDark: boolean
   hasWrench: boolean
+  hasRag: boolean
   wallWiped: boolean
   vaseSmashed: boolean
   codeKnown: boolean
@@ -41,6 +42,7 @@ export function createFlags(): MatchFlags {
     lightsOn: false,
     debugForceDark: false,
     hasWrench: false,
+    hasRag: false,
     wallWiped: false,
     vaseSmashed: false,
     codeKnown: false,
@@ -112,8 +114,13 @@ export function withWrench(flags: MatchFlags): MatchFlags {
   return { ...flags, hasWrench: true }
 }
 
+export function withRag(flags: MatchFlags): MatchFlags {
+  return { ...flags, hasRag: true }
+}
+
 export function withWallWiped(flags: MatchFlags): MatchFlags {
-  return { ...flags, wallWiped: true }
+  // Partner sim / sync: wiping implies rag was available
+  return { ...flags, wallWiped: true, hasRag: true }
 }
 
 export function withVaseSmashed(flags: MatchFlags): MatchFlags {
@@ -202,40 +209,36 @@ export function withStartedAt(flags: MatchFlags, at: number): MatchFlags {
 
 export function activeInteractables(
   flags: MatchFlags,
-  props: {
-    lever: Interactable
-    wrench: Interactable
-    vase: Interactable
-    locker: Interactable
-    fuse: Interactable
-    bypass: Interactable
-    wall: Interactable
-    keypad: Interactable
-  },
+  byId: Partial<Record<string, Interactable>>,
   pod: 'a' | 'b' = 'a',
 ): Interactable[] {
+  const take = (id: string) => {
+    const item = byId[id]
+    return item ? [item] : []
+  }
+
   if (!flags.gridOnline) {
-    if (pod === 'b') return flags.leverB ? [] : [props.lever]
-    return flags.leverA ? [] : [props.lever]
+    if (pod === 'b') return flags.leverB ? [] : take('lever')
+    return flags.leverA ? [] : take('lever')
   }
   if (flags.escaped) return []
 
   const list: Interactable[] = []
 
   if (pod === 'b') {
-    if (!flags.wallWiped) list.push(props.wall)
-    if (flags.codeKnown && !flags.keypadDone) list.push(props.keypad)
-    if (flags.fuseInstalled && !flags.escaped) list.push(props.bypass)
+    if (!flags.hasRag) list.push(...take('rag'))
+    if (flags.hasRag && !flags.wallWiped) list.push(...take('wall'))
+    if (flags.codeKnown && !flags.keypadDone) list.push(...take('keypad'))
+    if (flags.fuseInstalled) list.push(...take('bypass'))
     return list
   }
 
-  // Pod A (and solo)
-  if (!flags.hasWrench) list.push(props.wrench)
+  if (!flags.hasWrench) list.push(...take('wrench'))
   if (flags.hasWrench && flags.wallWiped && !flags.vaseSmashed) {
-    list.push(props.vase)
+    list.push(...take('vase'))
   }
-  if (flags.keypadDone && !flags.hasFuse) list.push(props.locker)
-  if (flags.hasFuse && !flags.fuseInstalled) list.push(props.fuse)
-  if (flags.fuseInstalled && !flags.escaped) list.push(props.bypass)
+  if (flags.keypadDone && !flags.hasFuse) list.push(...take('locker'))
+  if (flags.hasFuse && !flags.fuseInstalled) list.push(...take('fuse'))
+  if (flags.fuseInstalled) list.push(...take('bypass'))
   return list
 }

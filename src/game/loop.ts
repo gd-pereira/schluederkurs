@@ -10,25 +10,20 @@ import {
 } from './constants'
 import { footBottom, resolveMove } from './collision'
 import { findNearestInteractable } from './interact'
-import type { AABB, Interactable, LoopControls, Prop } from './types'
+import type { AABB, Interactable, LoopControls } from './types'
 
 export type LoopHandles = {
   playerEl: HTMLElement
-  propEl: HTMLElement
-  leverEl: HTMLElement
   worldEl: HTMLElement
   promptEl: HTMLElement | null
 }
 
 export type LoopOptions = {
   handles: LoopHandles
-  solids: readonly AABB[]
-  crate: Prop
-  /** Mutable list — WorldView clears lever after local pull */
+  /** Mutable solids — swap when pod world changes */
+  solidsRef: { current: readonly AABB[] }
   interactablesRef: { current: readonly Interactable[] }
-  /** Optional: L toggles debug dark via React instead of flipping darkMode directly */
   onToggleDebugDark?: () => void
-  /** Foot center pose for multiplayer ghost (~called every frame; throttle outside) */
   onPose?: (x: number, y: number) => void
   controls: LoopControls
   onRequestTask: (taskId: string) => void
@@ -48,8 +43,7 @@ function spriteTopLeftFromFoot(foot: AABB): { x: number; y: number } {
 export function startGameLoop(options: LoopOptions): GameLoop {
   const {
     handles,
-    solids,
-    crate,
+    solidsRef,
     interactablesRef,
     controls,
     onRequestTask,
@@ -68,13 +62,6 @@ export function startGameLoop(options: LoopOptions): GameLoop {
     y: PLAYER_START_Y,
     w: PLAYER_FOOT_W,
     h: PLAYER_FOOT_H,
-  }
-
-  handles.propEl.style.zIndex = String(Math.floor(footBottom(crate.foot)))
-  // Lever sprite z-index from initial world prop (may leave interactables)
-  const leverFoot = interactablesRef.current.find((i) => i.id === 'lever')
-  if (leverFoot) {
-    handles.leverEl.style.zIndex = String(Math.floor(footBottom(leverFoot.foot)))
   }
 
   function writePlayerDom() {
@@ -166,7 +153,7 @@ export function startGameLoop(options: LoopOptions): GameLoop {
         const len = Math.hypot(mx, my)
         const dx = (mx / len) * MOVE_SPEED * dt
         const dy = (my / len) * MOVE_SPEED * dt
-        const next = resolveMove(foot, dx, dy, solids)
+        const next = resolveMove(foot, dx, dy, solidsRef.current)
         foot.x = next.x
         foot.y = next.y
       }

@@ -14,6 +14,7 @@ import {
   withVaseSmashed,
   withWallWiped,
   withWrench,
+  withRag,
 } from '../game/matchFlags'
 
 export type PodId = 'a' | 'b'
@@ -21,6 +22,7 @@ export type PodId = 'a' | 'b'
 export type MatchEvent =
   | { type: 'lever'; side: PodId }
   | { type: 'wrench' }
+  | { type: 'rag' }
   | { type: 'wallWipe' }
   | { type: 'vaseSmash' }
   | { type: 'keypadReserve' }
@@ -43,6 +45,8 @@ export function applyMatchEvent(
       return withLeverPulled(flags, event.side)
     case 'wrench':
       return withWrench(flags)
+    case 'rag':
+      return withRag(flags)
     case 'wallWipe':
       return withWallWiped(flags)
     case 'vaseSmash':

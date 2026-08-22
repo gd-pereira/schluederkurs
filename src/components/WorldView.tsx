@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react'
 import { footBottom } from '../game/collision'
 import {
   BLACKOUT_HOLD_MS,
@@ -22,19 +29,13 @@ import {
   type MatchFlags,
 } from '../game/matchFlags'
 import type { Interactable, LoopControls, MatchPhase } from '../game/types'
+import { createPodWorld, type PodWorld } from '../game/world'
 import {
-  createBypassProp,
-  createFusePanelProp,
-  createKeypadProp,
-  createLeverProp,
-  createLockerProp,
-  createPlaceholderCrate,
-  createVaseProp,
-  createWallProp,
-  createWorldSolids,
-  createWrenchProp,
-} from '../game/world'
-import { applyMatchEvent, isSoloMode, type MatchEvent, type PodId } from '../net/matchEvents'
+  applyMatchEvent,
+  isSoloMode,
+  type MatchEvent,
+  type PodId,
+} from '../net/matchEvents'
 import {
   connectWs,
   helloHost,
@@ -55,42 +56,85 @@ import FuseTask from './tasks/FuseTask'
 import KeypadTask from './tasks/KeypadTask'
 import LeverTask from './tasks/LeverTask'
 import LockerTask from './tasks/LockerTask'
+import RagTask from './tasks/RagTask'
 import VaseTask from './tasks/VaseTask'
 import WallTask from './tasks/WallTask'
 import WrenchTask from './tasks/WrenchTask'
 
-const crate = createPlaceholderCrate()
-const lever = createLeverProp()
-const wrench = createWrenchProp()
-const vase = createVaseProp()
-const locker = createLockerProp()
-const fusePanel = createFusePanelProp()
-const bypass = createBypassProp()
-const wall = createWallProp()
-const keypad = createKeypadProp()
-const solids = createWorldSolids([
-  crate,
-  lever,
-  wrench,
-  vase,
-  locker,
-  fusePanel,
-  bypass,
-  wall,
-  keypad,
-])
-const interactProps = {
-  lever,
-  wrench,
-  vase,
-  locker,
-  fuse: fusePanel,
-  bypass,
-  wall,
-  keypad,
+const forceSolo = isSoloMode()
+
+function propVisualState(
+  id: string,
+  flags: MatchFlags,
+  pod: PodId,
+): { opacity: number; backgroundColor?: string } {
+  switch (id) {
+    case 'lever':
+      return {
+        opacity: (pod === 'b' ? flags.leverB : flags.leverA) ? 0.45 : 1,
+      }
+    case 'wrench':
+      return { opacity: flags.hasWrench ? 0 : 1 }
+    case 'rag':
+      return { opacity: flags.hasRag ? 0 : 1 }
+    case 'vase':
+      return {
+        opacity: flags.vaseSmashed ? 0.5 : 1,
+        backgroundColor: flags.vaseSmashed ? '#3a2848' : undefined,
+      }
+    case 'locker':
+      return {
+        opacity: flags.hasFuse ? 0.55 : 1,
+        backgroundColor: flags.hasFuse ? '#2a3a32' : undefined,
+      }
+    case 'fuse':
+      return {
+        opacity: flags.fuseInstalled ? 0.55 : flags.hasFuse ? 1 : 0.45,
+        backgroundColor: flags.fuseInstalled ? '#5c3d0e' : undefined,
+      }
+    case 'bypass':
+      return {
+        opacity: flags.fuseInstalled ? 1 : 0.35,
+        backgroundColor: flags.escaped ? '#0f2940' : undefined,
+      }
+    case 'wall':
+      return { opacity: flags.wallWiped ? 0.4 : 1 }
+    case 'keypad':
+      return { opacity: flags.keypadDone ? 0.45 : 1 }
+    default:
+      return { opacity: 1 }
+  }
 }
 
-const forceSolo = isSoloMode()
+function renderPodProps(world: PodWorld, flags: MatchFlags, pod: PodId) {
+  return world.props.map((prop) => {
+    const visual = propVisualState(prop.id, flags, pod)
+    return (
+      <div
+        key={prop.id}
+        className="absolute left-0 top-0 will-change-transform"
+        style={{
+          width: prop.sprite.w,
+          height: prop.sprite.h,
+          transform: `translate(${prop.sprite.x}px, ${prop.sprite.y}px)`,
+          backgroundColor: visual.backgroundColor ?? prop.color,
+          boxShadow: 'inset 0 0 0 2px #1a1208',
+          borderRadius: 4,
+          opacity: visual.opacity,
+          zIndex: Math.floor(footBottom(prop.foot)),
+        }}
+        aria-hidden={prop.id !== 'lever' && prop.id !== 'bypass'}
+        aria-label={
+          prop.id === 'lever'
+            ? 'Lever'
+            : prop.id === 'bypass'
+              ? 'Bypass console'
+              : undefined
+        }
+      />
+    )
+  })
+}
 
 export default function WorldView() {
   const [phase, setPhase] = useState<MatchPhase>('lobby')
@@ -114,8 +158,6 @@ export default function WorldView() {
 
   const worldRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<HTMLDivElement>(null)
-  const propRef = useRef<HTMLDivElement>(null)
-  const leverRef = useRef<HTMLDivElement>(null)
   const promptRef = useRef<HTMLDivElement>(null)
   const ghostRef = useRef<HTMLDivElement>(null)
   const controlsRef = useRef<LoopControls>({
@@ -123,8 +165,11 @@ export default function WorldView() {
     inputLocked: false,
     darkMode: false,
   })
+  const podWorld = useMemo(() => createPodWorld(pod), [pod])
+  const solidsRef = useRef(podWorld.solids)
+  solidsRef.current = podWorld.solids
   const interactablesRef = useRef<readonly Interactable[]>(
-    activeInteractables(createFlags(), interactProps, 'a'),
+    activeInteractables(createFlags(), createPodWorld('a').byId, 'a'),
   )
   const phaseRef = useRef(phase)
   const openTaskRef = useRef(openTaskId)
@@ -152,7 +197,7 @@ export default function WorldView() {
   controlsRef.current.phase = phase
   controlsRef.current.inputLocked = openTaskId !== null || flags.escaped
   controlsRef.current.darkMode = effectiveDark(flags, lockdownStarted)
-  interactablesRef.current = activeInteractables(flags, interactProps, pod)
+  interactablesRef.current = activeInteractables(flags, podWorld.byId, pod)
 
   const syncDarkToDom = useCallback((nextFlags: MatchFlags, lockedDown: boolean) => {
     const dark = effectiveDark(nextFlags, lockedDown)
@@ -249,10 +294,11 @@ export default function WorldView() {
       if (podRef.current === 'b' && f.leverB) return
     }
     if (taskId === 'wrench' && f.hasWrench) return
+    if (taskId === 'rag' && f.hasRag) return
     if (taskId === 'vase' && f.vaseSmashed) return
     if (taskId === 'locker' && f.hasFuse) return
     if (taskId === 'fuse' && f.fuseInstalled) return
-    if (taskId === 'wall' && f.wallWiped) return
+    if (taskId === 'wall' && (f.wallWiped || !f.hasRag)) return
     if (taskId === 'keypad' && f.keypadDone) return
     setOpenTaskId(taskId)
   }, [])
@@ -373,6 +419,11 @@ export default function WorldView() {
     setOpenTaskId(null)
   }, [dispatch])
 
+  const completeRag = useCallback(() => {
+    dispatch({ type: 'rag' })
+    setOpenTaskId(null)
+  }, [dispatch])
+
   const completeVaseSmash = useCallback(() => {
     dispatch({ type: 'vaseSmash' })
   }, [dispatch])
@@ -448,20 +499,15 @@ export default function WorldView() {
   useEffect(() => {
     const worldEl = worldRef.current
     const playerEl = playerRef.current
-    const propEl = propRef.current
-    const leverEl = leverRef.current
-    if (!worldEl || !playerEl || !propEl || !leverEl) return
+    if (!worldEl || !playerEl) return
 
     const loop = startGameLoop({
       handles: {
         worldEl,
         playerEl,
-        propEl,
-        leverEl,
         promptEl: promptRef.current,
       },
-      solids,
-      crate,
+      solidsRef,
       interactablesRef,
       controls: controlsRef.current,
       onRequestTask: requestTask,
@@ -539,144 +585,7 @@ export default function WorldView() {
             }}
           />
 
-          <div
-            ref={propRef}
-            className="absolute left-0 top-0 will-change-transform"
-            style={{
-              width: crate.sprite.w,
-              height: crate.sprite.h,
-              transform: `translate(${crate.sprite.x}px, ${crate.sprite.y}px)`,
-              backgroundColor: crate.color,
-              boxShadow: 'inset 0 0 0 2px #1a1208',
-              zIndex: Math.floor(footBottom(crate.foot)),
-            }}
-            aria-hidden
-          />
-
-          <div
-            ref={leverRef}
-            className="absolute left-0 top-0 will-change-transform"
-            style={{
-              width: lever.sprite.w,
-              height: lever.sprite.h,
-              transform: `translate(${lever.sprite.x}px, ${lever.sprite.y}px)`,
-              backgroundColor: lever.color,
-              boxShadow: 'inset 0 0 0 2px #3a1808',
-              borderRadius: 4,
-              opacity: (pod === 'b' ? flags.leverB : flags.leverA) ? 0.45 : 1,
-              zIndex: Math.floor(footBottom(lever.foot)),
-            }}
-            aria-label="Lever"
-          />
-
-          <div
-            className="absolute left-0 top-0 will-change-transform"
-            style={{
-              width: wrench.sprite.w,
-              height: wrench.sprite.h,
-              transform: `translate(${wrench.sprite.x}px, ${wrench.sprite.y}px)`,
-              backgroundColor: wrench.color,
-              boxShadow: 'inset 0 0 0 2px #2a3038',
-              borderRadius: 4,
-              opacity: flags.hasWrench ? 0 : pod === 'b' ? 0.25 : 1,
-              zIndex: Math.floor(footBottom(wrench.foot)),
-            }}
-            aria-hidden
-          />
-
-          <div
-            className="absolute left-0 top-0 will-change-transform"
-            style={{
-              width: vase.sprite.w,
-              height: vase.sprite.h,
-              transform: `translate(${vase.sprite.x}px, ${vase.sprite.y}px)`,
-              backgroundColor: flags.vaseSmashed ? '#3a2848' : vase.color,
-              boxShadow: 'inset 0 0 0 2px #2a1838',
-              borderRadius: 6,
-              opacity: flags.vaseSmashed ? 0.5 : pod === 'b' ? 0.25 : 1,
-              zIndex: Math.floor(footBottom(vase.foot)),
-            }}
-            aria-hidden
-          />
-
-          <div
-            className="absolute left-0 top-0 will-change-transform"
-            style={{
-              width: locker.sprite.w,
-              height: locker.sprite.h,
-              transform: `translate(${locker.sprite.x}px, ${locker.sprite.y}px)`,
-              backgroundColor: flags.hasFuse ? '#2a3a32' : locker.color,
-              boxShadow: 'inset 0 0 0 2px #1a2820',
-              borderRadius: 4,
-              opacity: flags.hasFuse ? 0.55 : pod === 'b' ? 0.25 : 1,
-              zIndex: Math.floor(footBottom(locker.foot)),
-            }}
-            aria-hidden
-          />
-
-          <div
-            className="absolute left-0 top-0 will-change-transform"
-            style={{
-              width: fusePanel.sprite.w,
-              height: fusePanel.sprite.h,
-              transform: `translate(${fusePanel.sprite.x}px, ${fusePanel.sprite.y}px)`,
-              backgroundColor: flags.fuseInstalled ? '#5c3d0e' : fusePanel.color,
-              boxShadow: 'inset 0 0 0 2px #3a2208',
-              borderRadius: 4,
-              opacity: flags.fuseInstalled
-                ? 0.55
-                : flags.hasFuse && pod === 'a'
-                  ? 1
-                  : 0.3,
-              zIndex: Math.floor(footBottom(fusePanel.foot)),
-            }}
-            aria-hidden
-          />
-
-          <div
-            className="absolute left-0 top-0 will-change-transform"
-            style={{
-              width: bypass.sprite.w,
-              height: bypass.sprite.h,
-              transform: `translate(${bypass.sprite.x}px, ${bypass.sprite.y}px)`,
-              backgroundColor: flags.escaped ? '#0f2940' : bypass.color,
-              boxShadow: 'inset 0 0 0 2px #0a1a2e',
-              borderRadius: 6,
-              opacity: flags.fuseInstalled ? 1 : 0.35,
-              zIndex: Math.floor(footBottom(bypass.foot)),
-            }}
-            aria-label="Bypass console"
-          />
-
-          <div
-            className="absolute left-0 top-0 will-change-transform"
-            style={{
-              width: wall.sprite.w,
-              height: wall.sprite.h,
-              transform: `translate(${wall.sprite.x}px, ${wall.sprite.y}px)`,
-              backgroundColor: wall.color,
-              boxShadow: 'inset 0 0 0 2px #2a2418',
-              borderRadius: 4,
-              opacity: flags.wallWiped ? 0.4 : pod === 'b' || connectionMode === 'solo' ? 1 : 0.3,
-              zIndex: Math.floor(footBottom(wall.foot)),
-            }}
-            aria-hidden
-          />
-
-          <div
-            className="absolute left-0 top-0 will-change-transform"
-            style={{
-              width: keypad.sprite.w,
-              height: keypad.sprite.h,
-              transform: `translate(${keypad.sprite.x}px, ${keypad.sprite.y}px)`,
-              backgroundColor: keypad.color,
-              boxShadow: 'inset 0 0 0 2px #1a2030',
-              borderRadius: 4,
-              opacity: flags.keypadDone ? 0.45 : pod === 'b' || connectionMode === 'solo' ? 1 : 0.3,
-              zIndex: Math.floor(footBottom(keypad.foot)),
-            }}
-            aria-hidden
-          />
+          {renderPodProps(podWorld, flags, pod)}
 
           <div
             ref={ghostRef}
@@ -778,6 +687,11 @@ export default function WorldView() {
               <WrenchTask onComplete={completeWrench} />
             </TaskModal>
           )}
+          {openTaskId === 'rag' && (
+            <TaskModal title="Rag" onClose={closeTask}>
+              <RagTask onComplete={completeRag} />
+            </TaskModal>
+          )}
           {openTaskId === 'vase' && (
             <TaskModal title="Vase" onClose={closeTask}>
               <VaseTask
@@ -794,7 +708,7 @@ export default function WorldView() {
           )}
           {openTaskId === 'wall' && (
             <TaskModal title="Grimy wall" onClose={closeTask}>
-              <WallTask onComplete={completeWall} />
+              <WallTask hasRag={flags.hasRag} onComplete={completeWall} />
             </TaskModal>
           )}
           {openTaskId === 'keypad' && (

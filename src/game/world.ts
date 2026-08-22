@@ -217,6 +217,121 @@ export function createKeypadProp(): Interactable {
   }
 }
 
+/** Floor rag pickup (Pod B) — near cart */
+export function createRagProp(): Interactable {
+  const footW = 24
+  const footH = 18
+  const spriteW = 36
+  const spriteH = 28
+  const footX = 320
+  const footY = 500
+
+  return {
+    id: 'rag',
+    taskId: 'rag',
+    foot: { x: footX, y: footY, w: footW, h: footH },
+    sprite: {
+      x: footX + (footW - spriteW) / 2,
+      y: footY + footH - spriteH,
+      w: spriteW,
+      h: spriteH,
+    },
+    color: '#c4b59a',
+  }
+}
+
+/** Cart clutter (Pod B, non-interact) */
+export function createCartProp(): Prop {
+  const footW = 70
+  const footH = 36
+  const spriteW = 90
+  const spriteH = 80
+  const footX = 280
+  const footY = 520
+
+  return {
+    id: 'cart',
+    foot: { x: footX, y: footY, w: footW, h: footH },
+    sprite: {
+      x: footX + (footW - spriteW) / 2,
+      y: footY + footH - spriteH,
+      w: spriteW,
+      h: spriteH,
+    },
+    color: '#6b7280',
+  }
+}
+
+/** Breaker box flavor (non-interact) */
+export function createBreakerProp(footX: number, footY: number): Prop {
+  const footW = 40
+  const footH = 28
+  const spriteW = 56
+  const spriteH = 72
+  return {
+    id: 'breaker',
+    foot: { x: footX, y: footY, w: footW, h: footH },
+    sprite: {
+      x: footX + (footW - spriteW) / 2,
+      y: footY + footH - spriteH,
+      w: spriteW,
+      h: spriteH,
+    },
+    color: '#374151',
+  }
+}
+
 export function createWorldSolids(props: readonly Prop[]): AABB[] {
   return [...createWalls(), ...props.map((p) => p.foot)]
+}
+
+export type PodWorld = {
+  pod: 'a' | 'b'
+  props: Prop[]
+  interactables: Interactable[]
+  solids: AABB[]
+  byId: Record<string, Interactable>
+}
+
+export function createPodWorld(pod: 'a' | 'b'): PodWorld {
+  if (pod === 'b') {
+    const lever = createLeverProp()
+    const cart = createCartProp()
+    const rag = createRagProp()
+    const wall = createWallProp()
+    const keypad = createKeypadProp()
+    const bypass = createBypassProp()
+    const breaker = createBreakerProp(1100, 200)
+    const interactables = [lever, rag, wall, keypad, bypass]
+    const props: Prop[] = [lever, cart, rag, wall, keypad, bypass, breaker]
+    const byId: Record<string, Interactable> = {}
+    for (const item of interactables) byId[item.id] = item
+    return {
+      pod,
+      props,
+      interactables,
+      solids: createWorldSolids(props),
+      byId,
+    }
+  }
+
+  const crate = createPlaceholderCrate()
+  const lever = createLeverProp()
+  const wrench = createWrenchProp()
+  const vase = createVaseProp()
+  const locker = createLockerProp()
+  const fuse = createFusePanelProp()
+  const bypass = createBypassProp()
+  const breaker = createBreakerProp(100, 200)
+  const interactables = [lever, wrench, vase, locker, fuse, bypass]
+  const props: Prop[] = [crate, lever, wrench, vase, locker, fuse, bypass, breaker]
+  const byId: Record<string, Interactable> = {}
+  for (const item of interactables) byId[item.id] = item
+  return {
+    pod,
+    props,
+    interactables,
+    solids: createWorldSolids(props),
+    byId,
+  }
 }
