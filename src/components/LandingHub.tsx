@@ -33,7 +33,7 @@ type LandingHubProps = {
  */
 const INTRO_REVEAL_AT_S = 2.35
 /** Hold the settled lit wide shot — before the dark ending (~10s total). */
-const INTRO_FREEZE_AT_S = 6.5
+const INTRO_FREEZE_AT_S = 6.2
 
 function captureVideoFrame(video: HTMLVideoElement): string | null {
   if (video.videoWidth < 2 || video.videoHeight < 2) return null
