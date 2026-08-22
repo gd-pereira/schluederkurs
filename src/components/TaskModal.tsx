@@ -2,6 +2,9 @@ import { useEffect, useRef, type ReactNode } from 'react'
 
 type TaskModalProps = {
   title?: string
+  eyebrow?: string
+  /** Tighter panel for hardware UIs (keypad) */
+  device?: boolean
   onClose: () => void
   children?: ReactNode
 }
@@ -11,6 +14,8 @@ const FOCUSABLE =
 
 export default function TaskModal({
   title = 'Task',
+  eyebrow = 'Facility terminal',
+  device = false,
   onClose,
   children,
 }: TaskModalProps) {
@@ -57,28 +62,32 @@ export default function TaskModal({
   }, [onClose])
 
   return (
-    <div className="absolute inset-0 z-[10100] flex items-center justify-center bg-black/55 px-4">
+    <div className="facility-scrim">
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="task-modal-title"
-        className="w-full max-w-md rounded-lg border-4 border-neutral-600 bg-neutral-200 px-6 py-5 text-neutral-900 shadow-[0_12px_40px_rgba(0,0,0,0.55)]"
+        className={`facility-panel ${device ? 'facility-panel--device' : ''}`}
       >
-        <div className="mb-4 flex items-center justify-between gap-4 border-b-2 border-neutral-400 pb-3">
-          <h2 id="task-modal-title" className="text-lg font-bold tracking-tight">
-            {title}
-          </h2>
+        <div className="facility-panel__grain" aria-hidden />
+        <div className="facility-panel__head">
+          <div>
+            <p className="facility-panel__eyebrow">{eyebrow}</p>
+            <h2 id="task-modal-title" className="facility-panel__title">
+              {title}
+            </h2>
+          </div>
           <button
             ref={closeRef}
             type="button"
             onClick={onClose}
-            className="rounded border-2 border-neutral-700 bg-neutral-100 px-3 py-1 text-sm font-semibold hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-800"
+            className="facility-panel__close"
           >
-            Close
+            Esc
           </button>
         </div>
-        <div>{children}</div>
+        <div className="facility-panel__body">{children}</div>
       </div>
     </div>
   )

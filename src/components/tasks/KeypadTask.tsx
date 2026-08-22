@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { KEYPAD_FAIL_MS, KEYPAD_RESERVE } from '../../game/constants'
-import { modalAssetUrl } from '../../game/assets'
 import { VASE_CODE } from '../../game/matchFlags'
-import OptionalAssetImg from '../OptionalAssetImg'
+import {
+  FacilityBody,
+  FacilityCallout,
+  FacilityCopy,
+  FacilityHint,
+} from '../FacilityUi'
 
 type KeypadTaskProps = {
   reserved: boolean
@@ -56,7 +60,7 @@ export default function KeypadTask({
       onSuccess()
       return
     }
-    setError('Rejected. Grid hiccup.')
+    setError('REJECTED')
     setDigits('')
     onFail()
     if (failTimerRef.current !== null) {
@@ -99,58 +103,71 @@ export default function KeypadTask({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [onSuccess, onFail, onClearFail])
 
+  const lcd = error ?? (digits.length === 0 ? '····' : digits.padEnd(4, '·'))
+
   return (
-    <div>
-      <OptionalAssetImg
-        src={modalAssetUrl('keypad')}
-        alt=""
-        className="mb-4 mx-auto max-h-36 w-auto object-contain"
-      />
-      <p className="text-sm text-neutral-700">
-        Painting circuit. While this is open it reserves{' '}
-        <strong>{KEYPAD_RESERVE}%</strong> of the shared grid — partner’s lights
-        die and they can’t run the fuse bay.
-      </p>
+    <FacilityBody>
+      <FacilityCopy>
+        Painting circuit. Open panel reserves{' '}
+        <strong>{KEYPAD_RESERVE}%</strong> of the shared grid — partner lights
+        die; fuse bay stays locked until you finish or yield.
+      </FacilityCopy>
 
-      <div className="mt-3 rounded border-2 border-amber-700/40 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+      <FacilityCallout tone={lightsOn ? 'amber' : 'fault'}>
         <p>
-          Free now: <strong>{Math.round(freePower)}%</strong>
+          Free <strong>{Math.round(freePower)}%</strong>
           {' · '}
-          Lights:{' '}
-          <strong className={lightsOn ? 'text-teal-700' : 'text-red-700'}>
-            {lightsOn ? 'ON' : 'OUT (both pods)'}
-          </strong>
+          Lights <strong>{lightsOn ? 'ON' : 'OUT'}</strong>
+          {reserved ? (
+            <>
+              {' · '}
+              Holding <strong>{KEYPAD_RESERVE}%</strong>
+            </>
+          ) : null}
         </p>
-        {reserved && (
-          <p className="mt-1 font-semibold">
-            You are holding {KEYPAD_RESERVE}% — finish the code or close to give
-            power back.
-          </p>
-        )}
+      </FacilityCallout>
+
+      <div className="facility-keypad">
+        <div className="facility-keypad__housing">
+          <div
+            className="facility-keypad__lcd"
+            data-error={error ? '1' : '0'}
+            aria-live="polite"
+          >
+            {lcd}
+          </div>
+          <div className="facility-keypad__grid">
+            {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', 'OK'].map(
+              (key) => {
+                const kind =
+                  key === 'C' ? 'clear' : key === 'OK' ? 'ok' : 'digit'
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`facility-keypad__key${
+                      kind === 'clear'
+                        ? ' facility-keypad__key--clear'
+                        : kind === 'ok'
+                          ? ' facility-keypad__key--ok'
+                          : ''
+                    }`}
+                    onClick={() => {
+                      if (key === 'C') clear()
+                      else if (key === 'OK') submit()
+                      else press(key)
+                    }}
+                  >
+                    {key === 'C' ? 'CLR' : key}
+                  </button>
+                )
+              },
+            )}
+          </div>
+        </div>
       </div>
 
-      <p className="mt-4 font-mono text-3xl tracking-[0.35em] text-neutral-900">
-        {digits.padEnd(4, '_')}
-      </p>
-      <div className="mt-4 grid grid-cols-3 gap-2">
-        {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', 'OK'].map(
-          (key) => (
-            <button
-              key={key}
-              type="button"
-              className="rounded border-2 border-neutral-700 bg-neutral-100 py-2 text-sm font-bold hover:bg-white"
-              onClick={() => {
-                if (key === 'C') clear()
-                else if (key === 'OK') submit()
-                else press(key)
-              }}
-            >
-              {key}
-            </button>
-          ),
-        )}
-      </div>
-      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
-    </div>
+      <FacilityHint>Keys · Backspace · Enter · C clears</FacilityHint>
+    </FacilityBody>
   )
 }

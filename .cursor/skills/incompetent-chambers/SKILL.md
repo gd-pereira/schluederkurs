@@ -53,7 +53,7 @@ Wire/Morse/frequency minigames, WebRTC, split-screen, Pixi/Three, long inventory
 
 ## Asset filenames
 
-`floor_tile`, `wall_h`, `gate_left`/`gate_right`, `breaker_box`, `vase_pedestal`, `painting`, `gate_console`, `locker`, `cart`, `item_lever`, `item_rag`, `item_wrench`, `item_fuse`, `modal_grime_wall`, `modal_vase_1..4`, `modal_keypad`, optional `player`.
+`floor_tile`, `wall_h`, `gate_left`/`gate_right`, `breaker_box`, `vase_pedestal`, `painting`, `gate_console`, `locker`, `cart`, `item_lever`, `item_rag`, `item_wrench`, `item_fuse`, `modal_grime_wall`, `modal_vase` / `modal_vase_shards`, `modal_keypad`, optional `player`.
 
 ## Build order
 

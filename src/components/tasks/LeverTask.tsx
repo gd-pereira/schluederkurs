@@ -1,20 +1,22 @@
+import {
+  FacilityBody,
+  FacilityBtn,
+  FacilityCopy,
+} from '../FacilityUi'
+
 type LeverTaskProps = {
   onComplete: () => void
 }
 
 export default function LeverTask({ onComplete }: LeverTaskProps) {
   return (
-    <div>
-      <p className="text-sm leading-relaxed text-neutral-700">
+    <FacilityBody>
+      <FacilityCopy>
         Local breaker lever. The grid won’t wake until both pods pull theirs.
-      </p>
-      <button
-        type="button"
-        onClick={onComplete}
-        className="mt-5 w-full rounded-md border-2 border-neutral-800 bg-amber-400 px-4 py-3 text-sm font-bold uppercase tracking-wide text-neutral-900 hover:bg-amber-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-800"
-      >
+      </FacilityCopy>
+      <FacilityBtn tone="amber" onClick={onComplete}>
         Pull lever
-      </button>
-    </div>
+      </FacilityBtn>
+    </FacilityBody>
   )
 }

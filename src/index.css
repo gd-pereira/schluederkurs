@@ -270,8 +270,8 @@ body {
   color: var(--facility-ink);
 }
 
-.facility-panel--wide {
-  max-width: 22rem;
+.facility-panel--device {
+  max-width: 20.5rem;
 }
 
 .facility-panel::before {

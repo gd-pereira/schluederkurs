@@ -37,7 +37,6 @@ export default function PowerHud({
   const partner = clamp(reservePartner)
   const fault = clamp(penalty)
   const freeClamped = clamp(free)
-  // Normalize stack to 100 visually even if rounding drifts
   const used = you + partner + fault
   const freeSeg = Math.max(0, 100 - used)
 
@@ -52,13 +51,11 @@ export default function PowerHud({
   })
 
   return (
-    <div className="pointer-events-none absolute right-3 top-3 z-[10040] w-56 rounded border border-neutral-600 bg-black/80 px-3 py-2.5 text-xs text-neutral-200 shadow-lg">
+    <div className="facility-hud absolute right-3 top-3 z-[10040] w-56 px-3 py-2.5 text-xs text-neutral-200">
       <div className="mb-1.5 flex items-baseline justify-between gap-2">
-        <p className="font-semibold uppercase tracking-wider text-neutral-400">
-          Shared grid
-        </p>
+        <p className="facility-hud__label">Shared grid</p>
         <p
-          className={`font-bold tabular-nums ${
+          className={`font-[family-name:var(--font-game-ui)] text-sm font-semibold tracking-[0.08em] ${
             lightsOn ? 'text-teal-300' : 'text-red-400'
           }`}
         >
@@ -67,7 +64,7 @@ export default function PowerHud({
       </div>
 
       <div
-        className="flex h-3.5 overflow-hidden rounded border border-neutral-700 bg-neutral-900"
+        className="flex h-3 overflow-hidden border border-neutral-700 bg-neutral-950"
         title="One shared 100% — both pods draw from this"
       >
         {you > 0 && (
@@ -139,7 +136,7 @@ function clamp(n: number) {
 function Legend({ swatch, label }: { swatch: string; label: string }) {
   return (
     <span className="inline-flex items-center gap-1">
-      <span className={`inline-block h-1.5 w-1.5 rounded-sm ${swatch}`} />
+      <span className={`inline-block h-1.5 w-1.5 ${swatch}`} />
       {label}
     </span>
   )

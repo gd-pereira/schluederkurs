@@ -1,4 +1,10 @@
 import { GATE_SYNC_MS } from '../../game/constants'
+import {
+  FacilityBody,
+  FacilityBtn,
+  FacilityCopy,
+  FacilityHint,
+} from '../FacilityUi'
 
 type BypassTaskProps = {
   localHeld: boolean
@@ -22,42 +28,48 @@ export default function BypassTask({
   const pct = Math.min(100, Math.round(syncProgress * 100))
 
   return (
-    <div>
-      <p className="text-sm leading-relaxed text-neutral-700">
+    <FacilityBody>
+      <FacilityCopy>
         Dual bypass. Both pods must hold — let go and the window resets.
-      </p>
+      </FacilityCopy>
 
-      <div className="mt-4 space-y-2 text-xs text-neutral-600">
-        <p>
-          You:{' '}
-          <span className={localHeld ? 'font-bold text-teal-700' : ''}>
-            {localHeld ? 'HOLDING' : 'released'}
-          </span>
-        </p>
-        <p>
-          Partner:{' '}
-          <span className={partnerHeld ? 'font-bold text-amber-700' : ''}>
-            {partnerHeld ? 'HOLDING' : 'released'}
-          </span>
-        </p>
+      <div className="grid grid-cols-2 gap-2 text-xs uppercase tracking-[0.14em]">
+        <div
+          className={`border px-3 py-2 ${
+            localHeld
+              ? 'border-teal-400/50 bg-teal-500/15 text-teal-200'
+              : 'border-neutral-600/80 bg-black/30 text-neutral-500'
+          }`}
+        >
+          You · {localHeld ? 'Holding' : 'Released'}
+        </div>
+        <div
+          className={`border px-3 py-2 ${
+            partnerHeld
+              ? 'border-amber-400/50 bg-amber-500/15 text-amber-200'
+              : 'border-neutral-600/80 bg-black/30 text-neutral-500'
+          }`}
+        >
+          Partner · {partnerHeld ? 'Holding' : 'Released'}
+        </div>
       </div>
 
       {showSyncBar ? (
-        <>
-          <div className="mt-3 h-3 overflow-hidden rounded bg-neutral-300">
+        <div>
+          <div className="h-2 overflow-hidden border border-neutral-700 bg-black/60">
             <div
               className={`h-full transition-[width] duration-75 ${
-                both ? 'bg-emerald-500' : 'bg-neutral-400'
+                both ? 'bg-teal-400' : 'bg-neutral-600'
               }`}
               style={{ width: `${both ? pct : 0}%` }}
             />
           </div>
-          <p className="mt-1 text-center text-xs text-neutral-500">
+          <p className="mt-1.5 text-center font-[family-name:var(--font-game-ui)] text-sm tracking-[0.12em] text-neutral-400">
             {both ? `${pct}% synced` : 'Waiting for both holds…'}
           </p>
-        </>
+        </div>
       ) : (
-        <p className="mt-3 text-center text-sm text-neutral-600">
+        <p className="text-center text-sm text-neutral-400">
           {both
             ? pct < 40
               ? 'Tone rising…'
@@ -70,9 +82,9 @@ export default function BypassTask({
         </p>
       )}
 
-      <button
-        type="button"
-        className="mt-5 w-full select-none rounded-md border-2 border-neutral-800 bg-sky-500 px-4 py-4 text-sm font-bold uppercase tracking-wide text-neutral-900 hover:bg-sky-400 active:bg-sky-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-800"
+      <FacilityBtn
+        tone="hold"
+        data-held={localHeld ? '1' : '0'}
         onPointerDown={(e) => {
           e.preventDefault()
           ;(e.target as HTMLButtonElement).setPointerCapture(e.pointerId)
@@ -83,12 +95,12 @@ export default function BypassTask({
         onLostPointerCapture={() => onHoldChange(false)}
       >
         {localHeld ? 'Holding bypass…' : 'Hold bypass'}
-      </button>
-      <p className="mt-2 text-center text-xs text-neutral-500">
+      </FacilityBtn>
+      <FacilityHint>
         {solo
           ? 'Press and hold — use Partner sim for the other side'
           : `Hold ~${GATE_SYNC_MS / 1000}s together — talk it out`}
-      </p>
-    </div>
+      </FacilityHint>
+    </FacilityBody>
   )
 }

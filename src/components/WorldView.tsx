@@ -11,6 +11,7 @@ import {
   FLASHLIGHT_RADIUS,
   FUSE_RESERVE,
   GATE_SYNC_MS,
+  KEYPAD_RESERVE,
   PLAYER_SPRITE_H,
   PLAYER_SPRITE_W,
   WORLD_H,
@@ -793,8 +794,8 @@ export default function WorldView() {
 
           <div
             ref={promptRef}
-            className="pointer-events-none absolute left-0 top-0 z-[5000] whitespace-nowrap text-sm font-bold tracking-wide text-amber-300 opacity-0 will-change-transform"
-            style={{ textShadow: '0 1px 2px #000' }}
+            className="pointer-events-none absolute left-0 top-0 z-[5000] whitespace-nowrap font-[family-name:var(--font-game-ui)] text-base font-semibold uppercase tracking-[0.12em] text-amber-300 opacity-0 will-change-transform"
+            style={{ textShadow: '0 2px 6px #000' }}
             aria-hidden
           />
 
@@ -846,34 +847,42 @@ export default function WorldView() {
           />
 
           {aiToast && !flags.escaped && !matchBroken && phase === 'play' && (
-            <p className="pointer-events-none absolute bottom-8 left-1/2 z-[10070] -translate-x-1/2 rounded bg-black/80 px-4 py-2 text-sm text-amber-200">
+            <p className="facility-hud pointer-events-none absolute bottom-8 left-1/2 z-[10070] -translate-x-1/2 border-amber-500/30 px-4 py-2 font-[family-name:var(--font-game-ui)] text-base tracking-[0.04em] text-amber-200">
               <TypewriterText text={aiToast} onComplete={onToastTyped} />
             </p>
           )}
 
           {connectionMode === 'online' && phase === 'play' && !matchBroken && (
-            <p className="pointer-events-none absolute left-3 top-3 z-[10040] rounded bg-black/70 px-2 py-1 text-xs text-neutral-300">
+            <p className="facility-hud pointer-events-none absolute left-3 top-3 z-[10040] px-2.5 py-1 font-[family-name:var(--font-game-ui)] text-sm tracking-[0.12em] text-neutral-300">
               Pod {pod.toUpperCase()} · {roomCode}
             </p>
           )}
 
           {openTaskId === 'lever' && (
-            <TaskModal title="Local lever" onClose={closeTask}>
+            <TaskModal
+              title="Breaker lever"
+              eyebrow="Local power"
+              onClose={closeTask}
+            >
               <LeverTask onComplete={completeLocalLever} />
             </TaskModal>
           )}
           {openTaskId === 'wrench' && (
-            <TaskModal title="Wrench" onClose={closeTask}>
+            <TaskModal title="Wrench" eyebrow="Tool locker" onClose={closeTask}>
               <WrenchTask onComplete={completeWrench} />
             </TaskModal>
           )}
           {openTaskId === 'rag' && (
-            <TaskModal title="Rag" onClose={closeTask}>
+            <TaskModal title="Service rag" eyebrow="Cart" onClose={closeTask}>
               <RagTask onComplete={completeRag} />
             </TaskModal>
           )}
           {openTaskId === 'vase' && (
-            <TaskModal title="Vase" onClose={closeTask}>
+            <TaskModal
+              title="Display vase"
+              eyebrow="Pedestal"
+              onClose={closeTask}
+            >
               <VaseTask
                 alreadySmashed={flags.vaseSmashed}
                 canSmash={flags.hasWrench && flags.wallWiped}
@@ -882,12 +891,20 @@ export default function WorldView() {
             </TaskModal>
           )}
           {openTaskId === 'locker' && (
-            <TaskModal title="Locker" onClose={closeTask}>
+            <TaskModal
+              title="Crew locker"
+              eyebrow="Storage"
+              onClose={closeTask}
+            >
               <LockerTask onComplete={completeLocker} />
             </TaskModal>
           )}
           {openTaskId === 'wall' && (
-            <TaskModal title="Grimy wall" onClose={closeTask}>
+            <TaskModal
+              title="Grime panel"
+              eyebrow="Corridor"
+              onClose={closeTask}
+            >
               <WallTask
                 hasRag={flags.hasRag}
                 wallWiped={flags.wallWiped}
@@ -896,7 +913,12 @@ export default function WorldView() {
             </TaskModal>
           )}
           {openTaskId === 'keypad' && (
-            <TaskModal title="Keypad" onClose={closeTask}>
+            <TaskModal
+              title="Painting keypad"
+              eyebrow={`Grid draw · ${KEYPAD_RESERVE}%`}
+              device
+              onClose={closeTask}
+            >
               <KeypadTask
                 reserved={flags.reserveB >= 80}
                 freePower={free}
@@ -910,7 +932,11 @@ export default function WorldView() {
             </TaskModal>
           )}
           {openTaskId === 'fuse' && (
-            <TaskModal title="Fuse bay" onClose={closeTask}>
+            <TaskModal
+              title="Fuse bay"
+              eyebrow={`Grid draw · ${FUSE_RESERVE}%`}
+              onClose={closeTask}
+            >
               <FuseTask
                 canReserve={canReserveFuse}
                 reserved={flags.reserveA >= FUSE_RESERVE}
@@ -926,6 +952,7 @@ export default function WorldView() {
           {openTaskId === 'bypass' && (
             <TaskModal
               title="Gate bypass"
+              eyebrow="Dual sync"
               onClose={() => {
                 setLocalBypass(false)
                 closeTask()
@@ -944,20 +971,26 @@ export default function WorldView() {
 
           {matchBroken && (
             <div className="absolute inset-0 z-[10250] flex flex-col items-center justify-center bg-black/85 px-6">
-              <h2 className="text-2xl font-bold text-neutral-50">
-                Partner disconnected
-              </h2>
-              <p className="mt-2 max-w-sm text-center text-sm text-neutral-400">
-                Match ended. Mid-game reconnect is not supported — return to the
-                lobby and start again.
-              </p>
-              <button
-                type="button"
-                onClick={resetMatch}
-                className="mt-6 rounded-md border-2 border-amber-500/80 bg-amber-500/15 px-8 py-3 text-sm font-bold uppercase tracking-wider text-amber-300 hover:bg-amber-500/25"
-              >
-                Back to lobby
-              </button>
+              <div className="facility-panel w-full max-w-sm">
+                <div className="facility-panel__grain" aria-hidden />
+                <div className="relative z-[1] px-6 py-7 text-center">
+                  <p className="facility-panel__eyebrow">Link fault</p>
+                  <h2 className="facility-panel__title mt-1">
+                    Partner disconnected
+                  </h2>
+                  <p className="mt-3 text-sm text-neutral-400">
+                    Match ended. Mid-game reconnect is not supported — return to
+                    the lobby and start again.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={resetMatch}
+                    className="facility-btn facility-btn--amber mt-6"
+                  >
+                    Back to lobby
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 

@@ -27,14 +27,14 @@ export default function PowerStrainBanner({
         : 'Free power too low'
 
   return (
-    <div className="pointer-events-none absolute left-1/2 top-3 z-[10045] w-[min(92%,28rem)] -translate-x-1/2 rounded border border-red-500/60 bg-red-950/90 px-4 py-2 text-center shadow-lg">
-      <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-red-300">
+    <div className="facility-strain absolute left-1/2 top-3 z-[10045] w-[min(92%,28rem)] -translate-x-1/2 px-4 py-2">
+      <p className="font-[family-name:var(--font-game-ui)] text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-red-300">
         Facility brownout
       </p>
-      <p className="mt-0.5 text-sm font-semibold text-red-100">
+      <p className="mt-0.5 font-[family-name:var(--font-game-ui)] text-lg font-semibold leading-none tracking-[0.04em] text-red-100">
         Lights dead · {free}% free · flashlight only
       </p>
-      <p className="mt-0.5 text-[11px] text-red-200/80">{cause}</p>
+      <p className="mt-1 text-[11px] text-red-200/75">{cause}</p>
     </div>
   )
 }

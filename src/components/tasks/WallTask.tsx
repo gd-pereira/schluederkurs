@@ -1,6 +1,14 @@
 import { modalAssetUrl } from '../../game/assets'
 import { CODE_CLUE_EVENS } from '../../game/matchFlags'
 import OptionalAssetImg from '../OptionalAssetImg'
+import {
+  FacilityArt,
+  FacilityBody,
+  FacilityBtn,
+  FacilityCode,
+  FacilityCopy,
+  FacilityHint,
+} from '../FacilityUi'
 
 type WallTaskProps = {
   hasRag: boolean
@@ -15,44 +23,34 @@ export default function WallTask({
 }: WallTaskProps) {
   if (wallWiped) {
     return (
-      <div>
-        <OptionalAssetImg
-          src={modalAssetUrl('wall')}
-          alt=""
-          className="mb-4 mx-auto max-h-40 w-auto object-contain"
-        />
-        <p className="text-sm leading-relaxed text-neutral-700">
+      <FacilityBody>
+        <FacilityArt>
+          <OptionalAssetImg src={modalAssetUrl('wall')} alt="" />
+        </FacilityArt>
+        <FacilityCopy>
           Under the grime: even slots only. Odds live somewhere you can&apos;t
           see.
-        </p>
-        <p className="mt-4 font-mono text-3xl font-bold tracking-[0.2em] text-neutral-900">
-          {CODE_CLUE_EVENS}
-        </p>
-        <p className="mt-3 text-xs text-neutral-500">Esc to close — tell your partner</p>
-      </div>
+        </FacilityCopy>
+        <FacilityCode>{CODE_CLUE_EVENS}</FacilityCode>
+        <FacilityHint>Esc to close — tell your partner</FacilityHint>
+      </FacilityBody>
     )
   }
 
   return (
-    <div>
-      <OptionalAssetImg
-        src={modalAssetUrl('wall')}
-        alt=""
-        className="mb-4 mx-auto max-h-40 w-auto object-contain"
-      />
-      <p className="text-sm leading-relaxed text-neutral-700">
+    <FacilityBody>
+      <FacilityArt>
+        <OptionalAssetImg src={modalAssetUrl('wall')} alt="" />
+      </FacilityArt>
+      <FacilityCopy>
         {hasRag
           ? 'Grime hides a partial sequence. Wipe it — you won’t get the whole code here.'
-          : 'The wall is caked in grime. You need a rag before you can wipe anything.'}
-      </p>
-      <button
-        type="button"
-        onClick={onComplete}
-        disabled={!hasRag}
-        className="mt-5 w-full rounded-md border-2 border-neutral-800 bg-stone-400 px-4 py-3 text-sm font-bold uppercase tracking-wide text-neutral-900 hover:bg-stone-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-800 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-stone-400"
-      >
-        Wipe wall
-      </button>
-    </div>
+          : 'Panel caked in grime. Need a rag before anything legible shows.'}
+      </FacilityCopy>
+      <FacilityBtn tone="metal" onClick={onComplete} disabled={!hasRag}>
+        Wipe panel
+      </FacilityBtn>
+      {!hasRag && <FacilityHint>Find the rag on the cart first</FacilityHint>}
+    </FacilityBody>
   )
 }
