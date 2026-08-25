@@ -98,7 +98,7 @@ export default function BypassTask({
       </FacilityBtn>
       <FacilityHint>
         {solo
-          ? 'Hold here. Use Partner sim for the other side.'
+          ? `Hold about ${GATE_SYNC_MS / 1000}s — your partner mirrors automatically.`
           : `Hold about ${GATE_SYNC_MS / 1000}s together.`}
       </FacilityHint>
     </FacilityBody>

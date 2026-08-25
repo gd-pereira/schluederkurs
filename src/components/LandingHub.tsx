@@ -629,7 +629,7 @@ export default function LandingHub({
           {mode === 'solo' && (
             <div className="mt-8">
               <p className="title-reveal mb-4 max-w-xs text-sm text-neutral-400">
-                Pick a pod. The other side runs on partner sim.
+                Pick a pod. The other chamber runs automatically.
               </p>
               <nav className="flex flex-col gap-1" aria-label="Solo pod">
                 <MenuItem

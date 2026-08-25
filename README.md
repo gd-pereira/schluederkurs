@@ -24,11 +24,11 @@ That starts:
 
 Use the **Vite URL** (`5173`) while developing — it talks to WS on `8080` automatically.
 
-### Solo (Partner sim)
+### Solo
 
 1. Open `http://localhost:5173` (or `http://localhost:5173/?solo=1`)
 2. Landing → **Solo** → pick Pod A or B
-3. Watch the briefing (or Skip), then use the **Solo sim** buttons under the pod for the other player
+3. Watch the briefing (or Skip), then play — the other pod advances automatically
 
 ### Two-player (real multiplayer)
 
@@ -48,7 +48,7 @@ Tip: use a normal window + an Incognito/Private window so you don’t share the 
 3. Skip or watch briefing → lights into pods
 4. **Pod A:** lever → wrench → (wait for wipe) vase `8977` → locker fuse → fuse bay 70% → bypass hold  
 5. **Pod B:** lever → rag → wipe wall → keypad 80% (code from A) → yield if A needs power → bypass hold  
-6. **Solo:** Solo → Ready → briefing → use **Solo sim** “Next: …” buttons under the pod in order (lever → wipe → keypad → yield/bypass)
+6. **Solo:** Solo → Ready → briefing → play your pod; the other chamber advances on its own
 7. Mid-game partner disconnect ends the match (Back to lobby) — no mid-game reconnect
 8. Escape → **Play again** returns to landing without refreshing
 

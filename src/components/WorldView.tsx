@@ -49,11 +49,11 @@ import {
   sendReady,
   type WsClient,
 } from '../net/wsClient'
+import { useSoloPartner } from '../hooks/useSoloPartner'
 import EscapeOverlay from './EscapeOverlay'
 import BriefingSequence from './BriefingSequence'
 import CollisionMaskTool from './CollisionMaskTool'
 import LandingHub, { type LobbyMode } from './LandingHub'
-import PartnerSim from './PartnerSim'
 import PodPropSprites from './PodPropSprites'
 import PowerHud from './PowerHud'
 import PowerStrainBanner from './PowerStrainBanner'
@@ -502,49 +502,6 @@ export default function WorldView() {
     setOpenTaskId(null)
   }, [dispatch, triggerFacilityFlicker])
 
-  const completePartnerLever = useCallback(() => {
-    const partnerSide = podRef.current === 'a' ? 'b' : 'a'
-    dispatch({ type: 'lever', side: partnerSide })
-    triggerFacilityFlicker()
-  }, [dispatch, triggerFacilityFlicker])
-
-  const completePartnerWipe = useCallback(() => {
-    dispatch({ type: 'wallWipe' })
-  }, [dispatch])
-
-  const completePartnerVaseSmash = useCallback(() => {
-    dispatch({ type: 'vaseSmash' })
-    triggerFacilityFlicker()
-  }, [dispatch, triggerFacilityFlicker])
-
-  const completePartnerFuseLoot = useCallback(() => {
-    dispatch({ type: 'fuseLoot' })
-  }, [dispatch])
-
-  const completePartnerFuseInstall = useCallback(() => {
-    dispatch({ type: 'fuseInstalled' })
-  }, [dispatch])
-
-  const completePartnerKeypadOpen = useCallback(() => {
-    dispatch({ type: 'keypadReserve' })
-  }, [dispatch])
-
-  const completePartnerKeypadFinish = useCallback(() => {
-    dispatch({ type: 'keypadDone' })
-  }, [dispatch])
-
-  const completePartnerYield = useCallback(() => {
-    dispatch({ type: 'partnerYield' })
-  }, [dispatch])
-
-  const setPartnerBypass = useCallback(
-    (held: boolean) => {
-      const partnerSide = podRef.current === 'a' ? 'b' : 'a'
-      dispatch({ type: 'bypass', side: partnerSide, held })
-    },
-    [dispatch],
-  )
-
   const setLocalBypass = useCallback(
     (held: boolean) => {
       dispatch({ type: 'bypass', side: podRef.current, held })
@@ -698,8 +655,19 @@ export default function WorldView() {
     flags.escapedAt !== null && flags.startedAt !== null
       ? flags.escapedAt - flags.startedAt
       : 0
-  const showPartnerSim =
+  const soloPlay =
     connectionMode === 'solo' && phase === 'play' && !matchBroken
+  const localBypassHeld = pod === 'a' ? flags.bypassA : flags.bypassB
+
+  useSoloPartner({
+    enabled: soloPlay && !flags.escaped,
+    localPod: pod,
+    flags,
+    localBypassHeld,
+    dispatch,
+    onFlicker: triggerFacilityFlicker,
+  })
+
   const reserveYou = pod === 'b' ? flags.reserveB : flags.reserveA
   const reservePartner = pod === 'b' ? flags.reserveA : flags.reserveB
   const youDevice =
@@ -854,9 +822,13 @@ export default function WorldView() {
             </p>
           )}
 
-          {connectionMode === 'online' && phase === 'play' && !matchBroken && (
+          {(connectionMode === 'online' || connectionMode === 'solo') &&
+            phase === 'play' &&
+            !matchBroken && (
             <p className="facility-hud pointer-events-none absolute left-3 top-3 z-[10040] px-2.5 py-1 font-[family-name:var(--font-game-ui)] text-sm tracking-[0.12em] text-neutral-300">
-              Pod {pod.toUpperCase()} · {roomCode}
+              {connectionMode === 'solo'
+                ? `Solo · Pod ${pod.toUpperCase()}`
+                : `Pod ${pod.toUpperCase()} · ${roomCode}`}
             </p>
           )}
 
@@ -1063,39 +1035,6 @@ export default function WorldView() {
           document.body,
         )}
 
-      {/* Portal out of the CSS scale transform so letterbox chrome stays viewport-fixed */}
-      {createPortal(
-        <div className="pointer-events-none fixed inset-x-0 bottom-3 z-[10300] flex justify-center">
-          <div className="pointer-events-auto">
-            <PartnerSim
-              enabled={showPartnerSim}
-              localPod={pod}
-              partnerLeverDone={pod === 'a' ? flags.leverB : flags.leverA}
-              onPartnerLever={completePartnerLever}
-              gridOn={flags.gridOnline}
-              wallWiped={flags.wallWiped}
-              onPartnerWipe={completePartnerWipe}
-              codeKnown={flags.codeKnown}
-              keypadDone={flags.keypadDone}
-              partnerKeypadOpen={flags.reserveB > 0 && !flags.keypadDone}
-              onPartnerKeypadOpen={completePartnerKeypadOpen}
-              onPartnerKeypadFinish={completePartnerKeypadFinish}
-              partnerReserve={pod === 'a' ? flags.reserveB : flags.reserveA}
-              onPartnerYield={completePartnerYield}
-              fuseInstalled={flags.fuseInstalled}
-              partnerBypassHeld={pod === 'a' ? flags.bypassB : flags.bypassA}
-              onPartnerBypassHold={setPartnerBypass}
-              vaseSmashed={flags.vaseSmashed}
-              onPartnerVaseSmash={completePartnerVaseSmash}
-              partnerHasFuse={flags.hasFuse}
-              onPartnerFuseLoot={completePartnerFuseLoot}
-              onPartnerFuseInstall={completePartnerFuseInstall}
-              escaped={flags.escaped}
-            />
-          </div>
-        </div>,
-        document.body,
-      )}
     </div>
   )
 }
